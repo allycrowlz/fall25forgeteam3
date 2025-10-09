@@ -1,13 +1,19 @@
 from connection import get_connection
 
 EXPENSE_TABLES = """
+DROP TABLE IF EXISTS expense_split CASCADE;
+DROP TABLE IF EXISTS expense_item CASCADE;
+DROP TABLE IF EXISTS expense_list CASCADE;
+
+
 CREATE TABLE expense_list (
     list_id SERIAL PRIMARY KEY,
     list_name VARCHAR(100) NOT NULL,
     group_id INTEGER NOT NULL,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     date_closed TIMESTAMP,
-    FOREIGN KEY (group_id) REFERENCES "Group"(group_id) ON DELETE CASCADE
+    FOREIGN KEY (group_id) REFERENCES "Group"(group_id) ON DELETE CASCADE,
+    UNIQUE (group_id, list_name)
 );
 
 CREATE TABLE expense_item (

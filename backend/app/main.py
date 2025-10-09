@@ -86,3 +86,4 @@ async def total_balance(id: int):
 def expenses_to_group_id(expense: Expense):
     print(expense.group_id)
     return expense.group_id
+
