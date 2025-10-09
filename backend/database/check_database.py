@@ -5,7 +5,7 @@ def check_database():
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
             SELECT table_name 
             FROM information_schema.tables 
