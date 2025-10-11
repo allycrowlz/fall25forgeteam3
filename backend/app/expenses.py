@@ -27,7 +27,7 @@ async def create_expense(expense: ExpenseItemCreate):
 
 @app.put("/api/expenses/{id}")
 async def update_or_create_expense(expense: ExpenseItemCreate, id: int):
-    """Not yet implemented"""
+    """Not yet implemented."""
 
 
 @app.delete("/api/expenses/{item_id}")
