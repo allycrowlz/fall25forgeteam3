@@ -2,8 +2,8 @@ import logfire
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import datetime
-from backend.database.pydanticmodels import *
-from backend.database import expense_queries
+from database.pydanticmodels import *
+from database import expense_queries
 
 
 
