@@ -144,7 +144,7 @@ async def login(credentials: UserLogin):
     }
 
 @app.get("/api/auth/me", response_model=UserResponse)
-async def get_current_user(authorization: str = Depends(get_current_user_from_token)):
+async def get_current_user(user_id: str = Depends(get_current_user_from_token)):
     
     conn = get_connection()
     cursor = conn.cursor()
