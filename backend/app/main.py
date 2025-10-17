@@ -9,5 +9,3 @@ async def root():
 
 logfire.configure()  
 logfire.info('Hello, {name}!', name='world')
-
-
