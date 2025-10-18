@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
 
+# TODO: add tables for shopping_list and list_item
 # shopping_list table --> list_name, list_id, date_created, date_closed, group_id
 # list_item table --> item_name, item_id, list_id, item_quantity, added_by, date_added, bought (bool)
 
