@@ -148,9 +148,6 @@ async def get_current_user(user_id: str = Depends(get_current_user_from_token)):
     
     conn = get_connection()
     cursor = conn.cursor()
-
-    conn = get_connection()
-    cursor = conn.cursor()
     
     cursor.execute(
         "SELECT profile_id, profile_name, email, picture, birthday FROM profile WHERE profile_id = %s",
@@ -177,7 +174,7 @@ async def get_current_user(user_id: str = Depends(get_current_user_from_token)):
 
 
 @app.put("/api/users/me", response_model=UserResponse)
-async def update_user(user_update: UserUpdate, authorization: str = Depends(get_current_user_from_token)):
+async def update_user(user_update: UserUpdate, user_id: str = Depends(get_current_user_from_token)):
 
     conn = get_connection()
     cursor = conn.cursor()
