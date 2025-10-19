@@ -1,42 +1,46 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Navbar from '../navbar'
+import { getUserGroups } from '@/app/services/database';
+
+type GroupInfo = {
+  group_id: number;
+  group_name: string;
+  date_created: string;
+  group_photo: string | null;
+  role: string;
+  is_creator: boolean;
+}
 
 export default function AddExpense() {
-  const [isRecurring, setIsRecurring] = useState(false)
-  const [customSplit, setCustomSplit] = useState(false)
-  const router = useRouter()
+  const router = useRouter();
+
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [customSplit, setCustomSplit] = useState(false);
+  const [groups, setGroups] = useState<GroupInfo[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  useEffect(() => {
+    async function loadGroups() {
+      setLoading(true);
+      try {
+        const data = await getUserGroups(1);
+        setGroups(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadGroups();
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Navigation Bar */}
-      <nav className="bg-white shadow-md mb-8">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex justify-between items-center py-4">
-            <div className="text-2xl font-bold text-gray-800">💰 ExpenseTracker</div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => router.push('/expenses')}
-                className="px-6 py-2 rounded-lg font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200"
-              >
-                Dashboard
-              </button>
-              <button
-                onClick={() => router.push('/expenses/bill-splitting')}
-                className="px-6 py-2 rounded-lg font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200"
-              >
-                Bill Splitting
-              </button>
-              <button
-                className="px-6 py-2 rounded-lg font-medium transition bg-blue-600 text-white"
-              >
-                Add Expense
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="px-6 pb-12">
         <div className="max-w-2xl mx-auto">
@@ -45,6 +49,23 @@ export default function AddExpense() {
           <div className="bg-white rounded-lg shadow-lg p-8">
             <div className="space-y-6">
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Group *
+                  </label>
+                    <select disabled = {loading} className="w-full border-2 border-gray-300 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none">
+                      {loading? (
+                        <option>Loading groups...</option>
+                      ) : 
+                      (
+                        groups.map(group => (
+                          <option key={group.group_id} value={group.group_id}>
+                            {group.group_name} 
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Amount *
