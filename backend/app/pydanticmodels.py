@@ -53,6 +53,24 @@ class ProfileEvent(ProfileEventBase):
     class Config:
         from_attributes = True
 
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    profile_id: int
+    profile_name: str
+    email: str
+    picture: Optional[str]
+    birthday: Optional[date]
+    
+    class Config:
+        from_attributes = True
+
+class UserUpdate(BaseModel):
+    profile_name: Optional[str] = Field(None, max_length=100)
+    picture: Optional[str] = Field(None, max_length=255)
+    birthday: Optional[date] = None
 
 # ============================================
 # GROUP MODELS
