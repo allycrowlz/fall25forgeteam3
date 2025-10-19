@@ -5,10 +5,6 @@ from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
 
-# TODO: add tables for shopping_list and list_item
-# shopping_list table --> list_name, list_id, date_created, date_closed, group_id
-# list_item table --> item_name, item_id, list_id, item_quantity, added_by, date_added, bought (bool)
-
 app = FastAPI()
 
 conn = psycopg2.connect(
@@ -55,9 +51,15 @@ class UpdateItem(BaseModel):
 # POST /api/groups/:id/lists
 @app.post("/api/groups/{group_id}/lists")
 async def create_shopping_list(group_id: int, create_list: CreateShoppingList):
+    """Create a shopping list"""
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
+        # Check if list exists first
+        cur.execute("""
+            SELECT group_id FROM group WHERE group_id = %s
+        """, (group_id,))
+
         cur.execute("""
             INSERT INTO "shopping_list" (list_name, group_id, date_created)
             VALUES (%s, %s, NOW())
@@ -81,10 +83,10 @@ async def get_lists(group_id: int):
 
     try:
         cur.execute("""
-            SELECT list_id, list_name, date_created. date_closed, group_id
+            SELECT list_id, list_name, date_created, date_closed, group_id
             FROM "shopping_list"
             WHERE group_id = %s
-            ORDER BY date_created DESC
+            ORDER BY date_created ASC
         """, (group_id,))
 
         rows = cur.fetchall()
