@@ -1,52 +1,11 @@
-import psycopg2
-from typing import Optional
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
-from datetime import datetime
+from database import connection
+from database.pydanticmodels import ShoppingList, ListItem, CreateShoppingList, ShoppingListWithItems, AddItem, UpdateItem
+
+conn = connection.get_connection()
 
 app = FastAPI()
-
-conn = psycopg2.connect(
-    dbname="homebase_dev",
-    user="homebase_dev",
-    password="homebase_devforge25",
-    host="5.161.238.246",
-    port=5432
-)
-
-# Pydantic models
-class ShoppingList(BaseModel):
-    list_name: str
-    list_id: int
-    date_created: datetime
-    date_closed: Optional[datetime] = None
-    group_id: int
-class ListItem(BaseModel):
-    item_name: str
-    item_id: int
-    list_id: int
-    item_quantity: Optional[int] = 1
-    added_by: int
-    date_added: datetime
-    bought: bool
-class CreateShoppingList(BaseModel):
-    list_name: str
-class ShoppingListWithItems(BaseModel):
-    list_id: int
-    list_name: str
-    date_created: datetime
-    date_closed: Optional[datetime] = None
-    group_id: int
-    items: list[ListItem] = []
-class AddItem(BaseModel):
-    item_name: str
-    item_quantity: Optional[int] = 1
-    added_by: int
-class UpdateItem(BaseModel):
-    item_name: Optional[str] = None
-    item_quantity: Optional[int] = None
-    bought: Optional[bool] = None
 
 # POST /api/groups/:id/lists
 @app.post("/api/groups/{group_id}/lists")
