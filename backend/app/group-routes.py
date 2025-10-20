@@ -5,9 +5,18 @@ from typing import Optional
 import string
 import random
 from psycopg2.extras import RealDictCursor
-from database import conn
+from database.connection import get_connection
 
 app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # Invite code generation utility
@@ -33,6 +42,8 @@ class JoinGroup(BaseModel):
 # POST /api/groups - Create a new group
 @app.post("/api/groups", status_code=201)
 async def create_group(group: GroupCreate):
+
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -70,6 +81,8 @@ async def create_group(group: GroupCreate):
 # POST /api/groups/join - Join a group using join code
 @app.post("/api/groups/join")
 async def join_group(join_data: JoinGroup):
+
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -117,6 +130,8 @@ async def join_group(join_data: JoinGroup):
 # GET /api/groups - Get all groups for current user
 @app.get("/api/groups")
 async def get_groups(profile_id: int):
+
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -139,6 +154,7 @@ async def get_groups(profile_id: int):
 # GET /api/groups/:id - Get a specific group
 @app.get("/api/groups/{id}")
 async def get_group(id: int, profile_id: int):
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -164,6 +180,7 @@ async def get_group(id: int, profile_id: int):
 # GET /api/groups/:id/members - Get all members of a group
 @app.get("/api/groups/{id}/members")
 async def get_group_members(id: int, profile_id: int):
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -196,6 +213,7 @@ async def get_group_members(id: int, profile_id: int):
 # PUT /api/groups/:id - Update a group
 @app.put("/api/groups/{id}")
 async def update_group(id: int, group: GroupUpdate, profile_id: int):
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -235,6 +253,7 @@ async def update_group(id: int, group: GroupUpdate, profile_id: int):
 # DELETE /api/groups/:id/members/:user_id - Remove a member from group
 @app.delete("/api/groups/{id}/members/{user_id}")
 async def remove_member(id: int, user_id: int, profile_id: int):
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -280,6 +299,7 @@ async def remove_member(id: int, user_id: int, profile_id: int):
 # POST /api/groups/:id/leave - Leave a group
 @app.post("/api/groups/{id}/leave")
 async def leave_group(id: int, profile_id: int):
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
