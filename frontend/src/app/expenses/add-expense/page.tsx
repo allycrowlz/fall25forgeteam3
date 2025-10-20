@@ -71,11 +71,11 @@ export default function AddExpense() {
                     Amount *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-gray-500 text-lg">$</span>
+                    <span className="absolute left-3 top-2.5 text-gray-700 text-lg">$</span>
                     <input
                       type="number"
-                      step="0.01"
-                      className="w-full border-2 border-gray-300 rounded-lg p-2 pl-8 focus:border-blue-500 focus:outline-none"
+                      step="1.00"
+                      className="w-full border-2 border-gray-300 rounded-lg p-2 pl-8 text-gray-700 focus:border-blue-500 focus:outline-none"
                       placeholder="0.00"
                     />
                   </div>
@@ -87,7 +87,7 @@ export default function AddExpense() {
                   </label>
                   <input
                     type="text"
-                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:border-blue-500 focus:outline-none"
+                    className="w-full border-2 border-gray-300 text-gray-700 rounded-lg p-2 focus:border-blue-500 focus:outline-none"
                     placeholder="What was this expense for?"
                   />
                 </div>
@@ -98,7 +98,7 @@ export default function AddExpense() {
                   </label>
                   <input
                     type="date"
-                    className="w-full border-2 border-gray-300 rounded-lg p-2 focus:border-blue-500 focus:outline-none"
+                    className="w-full border-2 border-gray-300 text-gray-700 rounded-lg p-2 focus:border-blue-500 focus:outline-none"
                     defaultValue={new Date().toISOString().split('T')[0]}
                   />
                 </div>
@@ -137,7 +137,7 @@ export default function AddExpense() {
                     Notes (Optional)
                   </label>
                   <textarea
-                    className="w-full border-2 border-gray-300 rounded-lg p-2 h-24 focus:border-blue-500 focus:outline-none resize-none"
+                    className="w-full border-2 border-gray-300 text-gray-700 rounded-lg p-2 h-24 focus:border-blue-500 focus:outline-none resize-none"
                     placeholder="Add any additional details..."
                   />
                 </div>
@@ -157,7 +157,7 @@ export default function AddExpense() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Who Paid? *
                     </label>
-                    <select className="w-full border-2 border-gray-300 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none">
+                    <select className="w-full border-2 border-gray-300 text-gray-700 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none">
                       <option value="">Select person...</option>
                       <option>John</option>
                       <option>Sarah</option>
