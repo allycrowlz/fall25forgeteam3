@@ -195,3 +195,39 @@ class ExpenseSplit(ExpenseSplitBase):
     
     class Config:
         from_attributes = True
+
+
+# ============================================
+# SHOPPING LIST MODELS
+# ============================================
+class ShoppingList(BaseModel):
+    list_name: str
+    list_id: int
+    date_created: datetime
+    date_closed: Optional[datetime] = None
+    group_id: int
+class ListItem(BaseModel):
+    item_name: str
+    item_id: int
+    list_id: int
+    item_quantity: Optional[int] = 1
+    added_by: int
+    date_added: datetime
+    bought: bool
+class CreateShoppingList(BaseModel):
+    list_name: str
+class ShoppingListWithItems(BaseModel):
+    list_id: int
+    list_name: str
+    date_created: datetime
+    date_closed: Optional[datetime] = None
+    group_id: int
+    items: list[ListItem] = []
+class AddItem(BaseModel):
+    item_name: str
+    item_quantity: Optional[int] = 1
+    added_by: int
+class UpdateItem(BaseModel):
+    item_name: Optional[str] = None
+    item_quantity: Optional[int] = None
+    bought: Optional[bool] = None
