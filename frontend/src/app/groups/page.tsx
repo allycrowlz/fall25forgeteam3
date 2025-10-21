@@ -21,7 +21,7 @@ export default function Home() {
 
           {/* Right side - Navigation Links */}
           <nav className="flex gap-8 items-center">
-            <a href="#" className="text-black font-semibold underline hover:text-gray-700 transition-colors">
+            <a href="/" className="text-black font-semibold underline hover:text-gray-700 transition-colors">
               Home
             </a>
             <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
@@ -33,10 +33,10 @@ export default function Home() {
             <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
               Expenses
             </a>
-            <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
+            <a href="/profile" className="text-gray-700 font-semibold hover:text-black transition-colors">
               Profile
             </a>
-            <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
+            <a href="/settings" className="text-gray-700 font-semibold hover:text-black transition-colors">
               Settings
             </a>
           </nav>
