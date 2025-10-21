@@ -1,11 +1,11 @@
 import logfire
 from fastapi import FastAPI, HTTPException, status, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from app.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
-from app.connection import get_connection
+from fall25forgeteam3.database.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
+from database.connection import get_connection
 from app.security import get_password_hash, create_access_token, verify_password, decode_token
 
-logfire.configure()  
+logfire.configure()
 logfire.info('Hello, {name}!', name='world')
 
 app = FastAPI()

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -14,9 +15,12 @@ export default function Home() {
               <option className="bg-green-100">Group 2</option>
               <option className="bg-purple-100">Group 3</option>
             </select>
-            <button className="px-6 py-3 bg-gray-600 text-white rounded-xl font-semibold hover:bg-gray-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105 whitespace-nowrap">
+            <Link 
+              href="/groups/join"
+              className="px-6 py-3 bg-gray-600 text-white rounded-xl font-semibold hover:bg-gray-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105 whitespace-nowrap"
+            >
               + Add Group
-            </button>
+            </Link>
           </div>
 
           {/* Right side - Navigation Links */}
