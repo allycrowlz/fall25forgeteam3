@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '../navbar'
-import { getUserGroups } from '@/app/services/database';
+import { getGroupMembers, getUserGroups } from '@/app/services/database';
+import { Group } from 'next/dist/shared/lib/router/utils/route-regex';
 
 type GroupInfo = {
   group_id: number;
@@ -14,13 +15,24 @@ type GroupInfo = {
   is_creator: boolean;
 }
 
+type UserInfo = {
+  profile_id: number;
+  profile_name: string;
+  email: string;
+  picture: string | null;
+  birthday: Date | null;
+}
+
 export default function AddExpense() {
   const router = useRouter();
 
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [customSplit, setCustomSplit] = useState(false);
+  const [isRecurring, setIsRecurring] = useState<boolean>(false);
+  const [customSplit, setCustomSplit] = useState<boolean>(false);
   const [groups, setGroups] = useState<GroupInfo[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [selectedGroup, setSelectedGroup] = useState<number>();
+  const [payer, setPayer] = useState('');
+  const [groupMembers, setGroupMembers] = useState<UserInfo[]>([]);
   
   useEffect(() => {
     async function loadGroups() {
@@ -53,7 +65,16 @@ export default function AddExpense() {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Group *
                   </label>
-                    <select disabled = {loading} className="w-full border-2 border-gray-300 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none">
+                    <select disabled = {loading} onChange={async (e) => {
+                    
+                    const newGroupId = parseInt(e.target.value);
+                    setSelectedGroup(newGroupId);
+                    
+                    const members = await getGroupMembers(newGroupId);
+                    setGroupMembers(members);
+                    }
+                  }
+                    className="w-full border-2 border-gray-300 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none">
                       {loading? (
                         <option>Loading groups...</option>
                       ) : 
@@ -157,7 +178,8 @@ export default function AddExpense() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Who Paid? *
                     </label>
-                    <select className="w-full border-2 border-gray-300 text-gray-700 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none">
+                    <select onChange={(e) => setPayer(e.target.value)}
+                    className="w-full border-2 border-gray-300 text-gray-700 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none">
                       <option value="">Select person...</option>
                       <option>John</option>
                       <option>Sarah</option>
@@ -174,7 +196,9 @@ export default function AddExpense() {
                       multiple 
                       className="w-full border-2 border-gray-300 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none h-24"
                     >
-                      <option>John</option>
+                        {groupMembers.map((member) => (
+                          <option value = {member.profile_id} key = {member.profile_id}>{member.profile_name}</option>
+                      ))}
                       <option>Sarah</option>
                       <option>Mike</option>
                       <option>Friend 1</option>
@@ -201,9 +225,9 @@ export default function AddExpense() {
                   {customSplit && (
                     <div className="space-y-2 pl-4 border-l-4 border-blue-500">
                       <div className="text-sm font-semibold text-gray-700 mb-2">Split Amounts:</div>
-                      {['John', 'Sarah'].map((person) => (
-                        <div key={person} className="flex items-center gap-3">
-                          <span className="text-sm text-gray-700 w-20">{person}</span>
+                      {groupMembers.map((member) => (
+                        <div key={member.profile_id} className="flex items-center gap-3">
+                          <span className="text-sm text-gray-700 w-20">{member.profile_name}</span>
                           <input
                             type="number"
                             step="0.01"
