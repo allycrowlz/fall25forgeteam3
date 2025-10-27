@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100 text-black">
       {/* Header Navigation */}
-      <header className="bg-gray-300 shadow-md px-8 py-4 border-b-4 border-gray-400">
+      <header className="bg-[#407947] shadow-md px-8 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           {/* Left side - Dropdown and Add Button */}
           <div className="flex items-center gap-4">
@@ -25,24 +25,27 @@ export default function Home() {
 
           {/* Right side - Navigation Links */}
           <nav className="flex gap-8 items-center">
-            <a href="#" className="text-black font-semibold underline hover:text-gray-700 transition-colors">
+            <Link href="/groups" className="text-white font-semibold underline hover:scale-110 transition-all">
               Home
-            </a>
-            <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
+            </Link>
+            <Link href="/calendar" className="text-white font-normal hover:font-semibold hover:scale-110 transition-all">
+              Calendar
+            </Link>
+            <Link href="/shoppinglist" className="text-white font-normal hover:font-semibold hover:scale-110 transition-all">
               Lists
-            </a>
-            <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
-              Chores
-            </a>
-            <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
+            </Link>
+            <Link href="/tasks" className="text-white font-normal hover:font-semibold hover:scale-110 transition-all">
+              Tasks
+            </Link>
+            <Link href="/expenses" className="text-white font-normal hover:font-semibold hover:scale-110 transition-all">
               Expenses
-            </a>
-            <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
+            </Link>
+            <Link href="/profile" className="text-white font-normal hover:font-semibold hover:scale-110 transition-all">
               Profile
-            </a>
-            <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
+            </Link>
+            <Link href="/settings" className="text-white font-normal hover:font-semibold hover:scale-110 transition-all">
               Settings
-            </a>
+            </Link>
           </nav>
         </div>
       </header>
