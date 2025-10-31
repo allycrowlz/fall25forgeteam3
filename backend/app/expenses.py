@@ -2,12 +2,14 @@ import logfire
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import datetime
+
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from database.pydanticmodels import *
 from database import expense_queries
 
-
-
-# RUN: fastapi dev backend/app/expenses.py for development server
 app = FastAPI()
 
 logfire.configure(token="pylf_v1_us_2YgWR7VMR3yLB7JrQPnwQJt3MFQPqW1jWKPg5p2klfMj")  

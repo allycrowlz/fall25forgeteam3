@@ -91,12 +91,12 @@ def seed_groups(profile_ids):
         INSERT INTO groupprofile (group_id, profile_id, role)
         VALUES (%s, %s, 'admin')
     """, (group_ids[0], group1_members[0]))
-    
     for member_id in group1_members[1:]:
         cursor.execute("""
             INSERT INTO groupprofile (group_id, profile_id, role)
             VALUES (%s, %s, 'member')
         """, (group_ids[0], member_id))
+
     
     # Group 2: Study Group (5 people)
     group2_members = profile_ids[2:7]

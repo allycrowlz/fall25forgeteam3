@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '../navbar'
-import { getGroupMembers, getUserGroups } from '@/app/services/database';
+import { getGroupExpenseLists, getGroupMembers, getUserGroups, postExpense } from '@/app/services/database';
 import { Group } from 'next/dist/shared/lib/router/utils/route-regex';
 
 type GroupInfo = {
@@ -23,6 +23,13 @@ type UserInfo = {
   birthday: Date | null;
 }
 
+type GroupExpenseList = {
+  list_name: string;
+  list_id: number;
+  group_id: number;
+  date_closed: Date | null;
+}
+
 export default function AddExpense() {
   const router = useRouter();
 
@@ -31,15 +38,37 @@ export default function AddExpense() {
   const [groups, setGroups] = useState<GroupInfo[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedGroup, setSelectedGroup] = useState<number>();
-  const [payer, setPayer] = useState('');
+  const [payer, setPayer] = useState<number>();
   const [groupMembers, setGroupMembers] = useState<UserInfo[]>([]);
+  const [groupExpenseLists, setGroupExpenseLists] = useState<GroupExpenseList[]>([]);
+  const [selectedList, setSelectedList] = useState<number>();
+
+  const [expenseName, setExpenseName] = useState<String>();
+  const [cost, setCost] = useState<number>(0);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [description, setDescription] = useState<String>();
   
   useEffect(() => {
     async function loadGroups() {
       setLoading(true);
       try {
-        const data = await getUserGroups(1);
+        const data = await getUserGroups(155);
         setGroups(data);
+
+        if (data != undefined) {
+          const typedData : GroupInfo[] = data;
+          const users : UserInfo[] = await getGroupMembers(typedData[0].group_id);
+          setGroupMembers(users);
+          
+          const lists = await getGroupExpenseLists(typedData[0].group_id);
+          setGroupExpenseLists(lists);
+          if (lists.length > 0) {
+            setSelectedList(lists[0].list_id);
+          } else {
+            setSelectedList(undefined);
+          }
+        } 
+
       } catch (error) {
         console.error(error);
       } finally {
@@ -70,11 +99,17 @@ export default function AddExpense() {
                     const newGroupId = parseInt(e.target.value);
                     setSelectedGroup(newGroupId);
                     
-                    const members = await getGroupMembers(newGroupId);
+                    const members : UserInfo[] = await getGroupMembers(newGroupId);
                     setGroupMembers(members);
+                    
+                    setPayer(members[0].profile_id);
+                   
+                    const lists : GroupExpenseList[] = await getGroupExpenseLists(newGroupId);
+                    setGroupExpenseLists(lists);
                     }
                   }
-                    className="w-full border-2 border-gray-300 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none">
+                    className="w-full border-2 border-gray-300 text-gray-700 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none">
+                      <option value="">Select Group...</option>
                       {loading? (
                         <option>Loading groups...</option>
                       ) : 
@@ -87,9 +122,38 @@ export default function AddExpense() {
                       )}
                     </select>
                   </div>
+                
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      List *
+                    </label>
+                    <select disabled = {loading}
+                    className="w-full border-2 border-gray-300 text-gray-700 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none">
+                      <option value="">Select List...</option>
+                      {
+                        groupExpenseLists.map(list => (
+                          <option key = {list.list_id} value={list.group_id}>
+                            {list.list_name} 
+                          </option>
+                        ))
+                      }
+                    </select>
+                  </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Amount *
+                    Expense Name *
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full border-2 border-gray-300 text-gray-700 rounded-lg p-2 focus:border-blue-500 focus:outline-none"
+                    placeholder="What was this expense for?"
+                    onChange={(e) => setExpenseName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Total Cost *
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-2.5 text-gray-700 text-lg">$</span>
@@ -98,18 +162,20 @@ export default function AddExpense() {
                       step="1.00"
                       className="w-full border-2 border-gray-300 rounded-lg p-2 pl-8 text-gray-700 focus:border-blue-500 focus:outline-none"
                       placeholder="0.00"
-                    />
+                     onChange={(e) => setCost(parseInt(e.target.value))}
+                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Description *
+                    Description
                   </label>
                   <input
                     type="text"
                     className="w-full border-2 border-gray-300 text-gray-700 rounded-lg p-2 focus:border-blue-500 focus:outline-none"
                     placeholder="What was this expense for?"
+                    onChange={(e) => setDescription(e.target.value)}
                   />
                 </div>
 
@@ -178,13 +244,12 @@ export default function AddExpense() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Who Paid? *
                     </label>
-                    <select onChange={(e) => setPayer(e.target.value)}
+                    <select onChange={(e) => setPayer(parseInt(e.target.value))}
                     className="w-full border-2 border-gray-300 text-gray-700 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none">
-                      <option value="">Select person...</option>
-                      <option>John</option>
-                      <option>Sarah</option>
-                      <option>Mike</option>
-                      <option>Me</option>
+                      <option value="">Select Payer...</option>
+                      {groupMembers.map((member) => (
+                          <option value = {member.profile_id} key = {member.profile_id}>{member.profile_name}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -196,13 +261,9 @@ export default function AddExpense() {
                       multiple 
                       className="w-full border-2 border-gray-300 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none h-24"
                     >
-                        {groupMembers.map((member) => (
+                        {groupMembers.filter((member) => member.profile_id != payer).map((member) => (
                           <option value = {member.profile_id} key = {member.profile_id}>{member.profile_name}</option>
                       ))}
-                      <option>Sarah</option>
-                      <option>Mike</option>
-                      <option>Friend 1</option>
-                      <option>Friend 2</option>
                     </select>
                     <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
                   </div>
@@ -225,7 +286,7 @@ export default function AddExpense() {
                   {customSplit && (
                     <div className="space-y-2 pl-4 border-l-4 border-blue-500">
                       <div className="text-sm font-semibold text-gray-700 mb-2">Split Amounts:</div>
-                      {groupMembers.map((member) => (
+                      {groupMembers.filter((member) => member.profile_id != payer).map((member) => (
                         <div key={member.profile_id} className="flex items-center gap-3">
                           <span className="text-sm text-gray-700 w-20">{member.profile_name}</span>
                           <input
@@ -238,22 +299,6 @@ export default function AddExpense() {
                       ))}
                     </div>
                   )}
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Category
-                    </label>
-                    <select className="w-full border-2 border-gray-300 rounded-lg p-2 bg-white focus:border-blue-500 focus:outline-none">
-                      <option value="">Select category...</option>
-                      <option>🛒 Groceries</option>
-                      <option>🏠 Utilities</option>
-                      <option>🍿 Entertainment</option>
-                      <option>🚗 Transportation</option>
-                      <option>🍔 Food & Dining</option>
-                      <option>💊 Healthcare</option>
-                      <option>📱 Subscriptions</option>
-                    </select>
-                  </div>
                 </div>
               </div>
 
@@ -266,6 +311,19 @@ export default function AddExpense() {
                 </button>
                 <button
                   className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold py-4 rounded-lg hover:from-green-600 hover:to-green-700 transition shadow-lg flex items-center justify-center gap-2"
+                  onClick={async () => {
+                    if (!expenseName || !selectedList || !cost /**!quantity */  || !payer) {
+                      alert("Please fill all required fields.")
+                      console.log("expenseName:", expenseName);
+                      console.log("selectedList:", selectedList);
+                      console.log("cost:", cost);
+                      console.log("quantity:", 1);
+                      console.log("payer:", payer);
+                    } else {
+                    postExpense(expenseName!, selectedList!, cost, 1/**quantity */, description, payer);
+                    router.push('/expenses');                    
+                  }
+                  }}
                 >
                   <span className="text-xl">+</span>
                   Add Expense

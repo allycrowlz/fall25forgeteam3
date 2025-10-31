@@ -5,7 +5,14 @@ from typing import Optional
 import string
 import random
 from psycopg2.extras import RealDictCursor
-from database.connection import get_connection
+
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from database import connection
+from database.pydanticmodels import ExpenseItemCreate, Group
+from database import expense_queries
 
 app = FastAPI()
 
@@ -17,6 +24,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class GroupMember(BaseModel):
+    profile_id: int
+    profile_name: str
+    email: str
+    picture: Optional[str]
+    role: str
+    is_creator: bool
 
 
 # Invite code generation utility
@@ -43,7 +58,7 @@ class JoinGroup(BaseModel):
 @app.post("/api/groups", status_code=201)
 async def create_group(group: GroupCreate):
 
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -82,7 +97,7 @@ async def create_group(group: GroupCreate):
 @app.post("/api/groups/join")
 async def join_group(join_data: JoinGroup):
 
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -128,25 +143,25 @@ async def join_group(join_data: JoinGroup):
         conn.close()
 
 # GET /api/groups - Get all groups for current user
-@app.get("/api/groups")
+@app.get('/api/groups')
 async def get_groups(profile_id: int):
 
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
         cur.execute("""
             SELECT g.group_id, g.group_name, g.date_created, g.group_photo, 
-                   gp.role,
+                   gp.role, g.join_code,
                    (gp.role = 'creator') as is_creator
-            FROM "group" g
+            FROM "Group" g
             INNER JOIN groupprofile gp ON g.group_id = gp.group_id
             WHERE gp.profile_id = %s
             ORDER BY g.date_created DESC
         """, (profile_id,))
         
-        rows = cur.fetchall()
-        return [dict(row) for row in rows]
+        groupData = cur.fetchall()
+        return [Group(**group) for group in groupData]
     finally:
         cur.close()
         conn.close()
@@ -154,7 +169,7 @@ async def get_groups(profile_id: int):
 # GET /api/groups/:id - Get a specific group
 @app.get("/api/groups/{id}")
 async def get_group(id: int, profile_id: int):
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -179,20 +194,20 @@ async def get_group(id: int, profile_id: int):
 
 # GET /api/groups/:id/members - Get all members of a group
 @app.get("/api/groups/{id}/members")
-async def get_group_members(id: int, profile_id: int):
-    conn = get_connection()
+async def get_group_members(id: int):
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
         cur.execute("""
             SELECT group_id FROM groupprofile
-            WHERE group_id = %s AND profile_id = %s
-        """, (id, profile_id))
+            WHERE group_id = %s
+        """, (id,))
         
         membership = cur.fetchone()
         
-        if not membership:
-            raise HTTPException(status_code=403, detail="Access denied")
+        # if not membership:
+        #     raise HTTPException(status_code=403, detail="Access denied")
  
         cur.execute("""
             SELECT p.profile_id, p.profile_name, p.email, p.picture,
@@ -203,9 +218,10 @@ async def get_group_members(id: int, profile_id: int):
             WHERE gp.group_id = %s
             ORDER BY gp.role DESC, p.profile_name
         """, (id,))
+
         
-        rows = cur.fetchall()
-        return [dict(row) for row in rows]
+        members = cur.fetchall()
+        return [GroupMember(**member) for member in members]
     finally:
         cur.close()
         conn.close()
@@ -213,7 +229,7 @@ async def get_group_members(id: int, profile_id: int):
 # PUT /api/groups/:id - Update a group
 @app.put("/api/groups/{id}")
 async def update_group(id: int, group: GroupUpdate, profile_id: int):
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -253,7 +269,7 @@ async def update_group(id: int, group: GroupUpdate, profile_id: int):
 # DELETE /api/groups/:id/members/:user_id - Remove a member from group
 @app.delete("/api/groups/{id}/members/{user_id}")
 async def remove_member(id: int, user_id: int, profile_id: int):
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -299,7 +315,7 @@ async def remove_member(id: int, user_id: int, profile_id: int):
 # POST /api/groups/:id/leave - Leave a group
 @app.post("/api/groups/{id}/leave")
 async def leave_group(id: int, profile_id: int):
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -334,3 +350,66 @@ async def leave_group(id: int, profile_id: int):
     finally:
         cur.close()
         conn.close()
+
+
+@app.get("/api/groups/{group_id}/expenselists")
+async def get_group_lists(group_id: int):
+    """
+    Gets all expense lists for a given group id
+    """
+    return expense_queries.get_group_lists(group_id)
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
+@app.post("/api/expenseslists/expenses", status_code=201)
+async def create_expense(expense: ExpenseItemCreate):
+    """
+    Creates a new expense using the inputted data parsed into a PydanticCreateModel
+    """
+    return expense_queries.create_expense(expense)
+
+
+@app.put("/api/expenses/{id}")
+async def update_or_create_expense(expense: ExpenseItemCreate, id: int):
+    """Not yet implemented."""
+
+
+@app.delete("/api/expenses/{item_id}")
+async def delete_expense(item_id: int):
+    """
+    Deletes the expense with the given expense id
+    """
+    expense_queries.delete_expense(item_id)
+    return {"message": f"Expense {item_id} deleted"}
+    
+@app.get("/api/expenseslists/{list_id}/expenses")
+async def get_all_expenses_in_list(list_id: int):
+    """
+    Gets all expenses in a given expense list
+    """
+    return expense_queries.get_all_expenses_in_list(list_id)
+
+@app.get("/api/expenseslists/{list_id}/expenses/{item_id}")
+async def get_all_expenses_in_list(list_id: int, item_id: int):
+    """
+    Gets an expense in a given list at a given expense, 
+    note: can probably remove list_id as a parameter but this is due 
+    soon so I'll change it for the next commit.
+    """
+    return expense_queries.get_item_in_list(list_id, item_id)
+
+@app.get("/api/groups/{group_id}/expenselists")
+async def get_group_lists(group_id: int):
+    """
+    Gets all expense lists for a given group id
+    """
+    return expense_queries.get_group_lists(group_id)
+
+@app.get("/api/groups/{group_id}/expenseslists/{list_id}/expenses/balance")
+async def total_balance(id: int):
+    """Not yet implemented"""
+
+# @app.put("/api/expenses/:id/splits/:split_id/paid")
+
