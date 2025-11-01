@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 
-import expenses, group_routes
+import expenses, group_routes, main
 
 
 # RUN: fastapi dev backend/app/api_connection.py for development server
@@ -19,6 +19,7 @@ app.add_middleware(
 
 app.include_router(group_routes.router)
 app.include_router(expenses.router)
+app.include_router(main.router)
 
 
 
