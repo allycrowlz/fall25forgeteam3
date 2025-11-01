@@ -99,39 +99,6 @@ export default function ShoppingListPage() {
 
   return (
     <div className="min-h-screen bg-white text-[#2b4a2e]">
-      {/* Top Nav */}
-      <header className="sticky top-0 z-10 border-b border-[#d7e3cf] bg-[#cfe1bc]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-2">
-            <span className="text-3xl font-extrabold tracking-tight">HomeB
-              <span className="inline-block -translate-y-0.5 text-emerald-900">🏠</span>
-              se
-            </span>
-          </div>
-          <nav className="flex items-center gap-8 text-[15px]">
-            {[
-              { label: "Home", active: false },
-              { label: "Lists", active: true },
-              { label: "Chores", active: false },
-              { label: "Expenses", active: false },
-              { label: "Profile", active: false },
-              { label: "Settings", active: false },
-            ].map((link) => (
-              <a
-                key={link.label}
-                href="#"
-                className={
-                  "font-medium hover:underline " +
-                  (link.active ? "text-emerald-900" : "text-[#2b4a2e]/80")
-                }
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
-        </div>
-      </header>
-
       {/* Content */}
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-6 flex items-end justify-between">
