@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -14,16 +14,9 @@ from database import connection
 from database.pydanticmodels import ExpenseItemCreate, Group
 from database import expense_queries
 
-app = FastAPI()
 
+router = APIRouter()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Your frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 class GroupMember(BaseModel):
     profile_id: int
@@ -55,7 +48,7 @@ class JoinGroup(BaseModel):
     profile_id: int
 
 # POST /api/groups - Create a new group
-@app.post("/api/groups", status_code=201)
+@router.post("/api/groups", status_code=201)
 async def create_group(group: GroupCreate):
 
     conn = connection.get_connection()
@@ -94,7 +87,7 @@ async def create_group(group: GroupCreate):
         conn.close()
 
 # POST /api/groups/join - Join a group using join code
-@app.post("/api/groups/join")
+@router.post("/api/groups/join")
 async def join_group(join_data: JoinGroup):
 
     conn = connection.get_connection()
@@ -143,7 +136,7 @@ async def join_group(join_data: JoinGroup):
         conn.close()
 
 # GET /api/groups - Get all groups for current user
-@app.get('/api/groups')
+@router.get('/api/groups')
 async def get_groups(profile_id: int):
 
     conn = connection.get_connection()
@@ -167,7 +160,7 @@ async def get_groups(profile_id: int):
         conn.close()
 
 # GET /api/groups/:id - Get a specific group
-@app.get("/api/groups/{id}")
+@router.get("/api/groups/{id}")
 async def get_group(id: int, profile_id: int):
     conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -193,7 +186,7 @@ async def get_group(id: int, profile_id: int):
         conn.close()
 
 # GET /api/groups/:id/members - Get all members of a group
-@app.get("/api/groups/{id}/members")
+@router.get("/api/groups/{id}/members")
 async def get_group_members(id: int):
     conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -227,7 +220,7 @@ async def get_group_members(id: int):
         conn.close()
 
 # PUT /api/groups/:id - Update a group
-@app.put("/api/groups/{id}")
+@router.put("/api/groups/{id}")
 async def update_group(id: int, group: GroupUpdate, profile_id: int):
     conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -267,7 +260,7 @@ async def update_group(id: int, group: GroupUpdate, profile_id: int):
         conn.close()
 
 # DELETE /api/groups/:id/members/:user_id - Remove a member from group
-@app.delete("/api/groups/{id}/members/{user_id}")
+@router.delete("/api/groups/{id}/members/{user_id}")
 async def remove_member(id: int, user_id: int, profile_id: int):
     conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -313,7 +306,7 @@ async def remove_member(id: int, user_id: int, profile_id: int):
         conn.close()
 
 # POST /api/groups/:id/leave - Leave a group
-@app.post("/api/groups/{id}/leave")
+@router.post("/api/groups/{id}/leave")
 async def leave_group(id: int, profile_id: int):
     conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -350,66 +343,3 @@ async def leave_group(id: int, profile_id: int):
     finally:
         cur.close()
         conn.close()
-
-
-@app.get("/api/groups/{group_id}/expenselists")
-async def get_group_lists(group_id: int):
-    """
-    Gets all expense lists for a given group id
-    """
-    return expense_queries.get_group_lists(group_id)
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@app.post("/api/expenseslists/expenses", status_code=201)
-async def create_expense(expense: ExpenseItemCreate):
-    """
-    Creates a new expense using the inputted data parsed into a PydanticCreateModel
-    """
-    return expense_queries.create_expense(expense)
-
-
-@app.put("/api/expenses/{id}")
-async def update_or_create_expense(expense: ExpenseItemCreate, id: int):
-    """Not yet implemented."""
-
-
-@app.delete("/api/expenses/{item_id}")
-async def delete_expense(item_id: int):
-    """
-    Deletes the expense with the given expense id
-    """
-    expense_queries.delete_expense(item_id)
-    return {"message": f"Expense {item_id} deleted"}
-    
-@app.get("/api/expenseslists/{list_id}/expenses")
-async def get_all_expenses_in_list(list_id: int):
-    """
-    Gets all expenses in a given expense list
-    """
-    return expense_queries.get_all_expenses_in_list(list_id)
-
-@app.get("/api/expenseslists/{list_id}/expenses/{item_id}")
-async def get_all_expenses_in_list(list_id: int, item_id: int):
-    """
-    Gets an expense in a given list at a given expense, 
-    note: can probably remove list_id as a parameter but this is due 
-    soon so I'll change it for the next commit.
-    """
-    return expense_queries.get_item_in_list(list_id, item_id)
-
-@app.get("/api/groups/{group_id}/expenselists")
-async def get_group_lists(group_id: int):
-    """
-    Gets all expense lists for a given group id
-    """
-    return expense_queries.get_group_lists(group_id)
-
-@app.get("/api/groups/{group_id}/expenseslists/{list_id}/expenses/balance")
-async def total_balance(id: int):
-    """Not yet implemented"""
-
-# @app.put("/api/expenses/:id/splits/:split_id/paid")
-

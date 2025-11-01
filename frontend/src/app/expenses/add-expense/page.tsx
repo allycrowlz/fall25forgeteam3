@@ -62,11 +62,6 @@ export default function AddExpense() {
           
           const lists = await getGroupExpenseLists(typedData[0].group_id);
           setGroupExpenseLists(lists);
-          if (lists.length > 0) {
-            setSelectedList(lists[0].list_id);
-          } else {
-            setSelectedList(undefined);
-          }
         } 
 
       } catch (error) {
