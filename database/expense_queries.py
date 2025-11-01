@@ -1,15 +1,7 @@
 from datetime import datetime
 import psycopg2
 from .pydanticmodels import ExpenseItem, ExpenseItemCreate, ExpenseList
-
-# Connect to your postgres DB
-conn = psycopg2.connect(
-        dbname="homebase_dev",
-        user="homebase_dev",
-        password="homebase_devforge25",
-        host="5.161.238.246",
-        port="5432"
-    )
+from database import connection
 
 
 def get_all_expenses_in_list(list_id: int):
@@ -18,6 +10,7 @@ def get_all_expenses_in_list(list_id: int):
     Returns all of the expenses in the expense list with the given list id
     as a pydantic model.
     """
+    conn = connection.get_connection()
     cur = conn.cursor()
     cur.execute("SELECT * FROM expense_item WHERE list_id = %s;", (list_id,))
     rows = cur.fetchall()
@@ -25,6 +18,8 @@ def get_all_expenses_in_list(list_id: int):
             for description_attributes in cur.description]
     data = [dict(zip(columns, row)) for row in rows]
     expense_lists = [ExpenseItem(**item) for item in data]
+    cur.close()
+    conn.close()
     return expense_lists
 
 def get_item_in_list(list_id: int, item_id: int):
@@ -33,6 +28,7 @@ def get_item_in_list(list_id: int, item_id: int):
     Returns all of the expenses in the expense list with the given list id
     as a list of pydantic models 
     """
+    conn = connection.get_connection()
     cur = conn.cursor()
     cur.execute("SELECT * FROM expense_item " \
     "WHERE list_id = %s AND item_id = %s;", (list_id, item_id))
@@ -41,6 +37,8 @@ def get_item_in_list(list_id: int, item_id: int):
                for description_attributes in cur.description]
     item = dict(zip(columns, row))
     expense = ExpenseItem(**item)
+    cur.close()
+    conn.close()
     return expense
 
 def get_group_lists(group_id: int):
@@ -49,12 +47,15 @@ def get_group_lists(group_id: int):
     Returns all of the expense lists for a given group based on group id
     as a list of pydantic models
     """
+    conn = connection.get_connection()
     cur = conn.cursor()
     cur.execute("SELECT * FROM expense_list WHERE group_id = %s", (group_id,))
     rows= cur.fetchall()
     columns = [desc[0] for desc in cur.description]
     data = [dict(zip(columns, row)) for row in rows]
     lists = [ExpenseList(**expList) for expList in data]
+    cur.close()
+    conn.close()
     return lists
 
 def delete_expense(item_id: int):
@@ -63,6 +64,7 @@ def delete_expense(item_id: int):
     Deletes expenses of a given item id, regardless of quantity
     """
 
+    conn = connection.get_connection()
     cur = conn.cursor()
     try:
         cur.execute("DELETE FROM expense_item WHERE item_id = %s", (item_id,))
@@ -70,9 +72,12 @@ def delete_expense(item_id: int):
     except Exception as e:
         conn.rollback()
         raise Exception(e)
+    cur.close()
+    conn.close()
 
 def create_expense(expense: ExpenseItemCreate):
 
+    conn = connection.get_connection()
     cur = conn.cursor()
     try:
         cur.execute("""INSERT INTO expense_item
@@ -94,12 +99,16 @@ def create_expense(expense: ExpenseItemCreate):
         complete_expense: ExpenseItem = ExpenseItem(item_id=item_id,
                                                     date_bought=date_bought,
                                                     **expense.model_dump())
-        
+        cur.close()
+        conn.close()
         return complete_expense
         
     except Exception as e:
+        cur.close()
+        conn.close()
         conn.rollback()
         raise Exception({e})
+
 
 #print(records)
 print(get_group_lists(0))
