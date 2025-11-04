@@ -11,7 +11,7 @@ export default function Home() {
   useEffect(() => {
     // Check if user is already logged in
     if (isAuthenticated()) {
-      router.push('/expenses');
+      router.push('/groups');
     }
   }, [router]);
 

@@ -72,8 +72,8 @@ export default function SignUpPage() {
       // Store token and auto-login
       setToken(response.access_token);
 
-      // Redirect to expenses page
-      window.location.href = "/expenses";
+      // Redirect to groups
+      window.location.href = "/groups";
     } catch (err: any) {
       // Handle different error types
       if (err.message.includes('fetch') || err.message.includes('network')) {
