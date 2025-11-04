@@ -55,3 +55,5 @@ watchfiles==1.1.0
 websockets==15.0.1
 wrapt==1.17.3
 zipp==3.23.0
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.5.0

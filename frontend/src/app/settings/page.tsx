@@ -1,4 +1,21 @@
+"use client";
+
+import { logout } from '../services/authService';
+import { useRouter } from 'next/navigation';
+
 export default function SettingsPage() {
+  const router = useRouter();
+
+  async function handleLogout() {
+    try {
+      await logout();
+      router.push('/login');
+    } catch (error) {
+      // Even if logout fails, clear local token and redirect
+      router.push('/login');
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 text-black">
       <header className="bg-gray-300 shadow-md px-8 py-4 border-b-4 border-gray-400">
@@ -36,6 +53,17 @@ export default function SettingsPage() {
             </div>
             <button type="submit" className="w-full rounded-md bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600">Save Changes</button>
           </form>
+          
+          {/* Logout Section */}
+          <div className="mt-8 pt-8 border-t border-gray-300">
+            <h2 className="text-xl font-semibold mb-4">Account</h2>
+            <button
+              onClick={handleLogout}
+              className="w-full rounded-md bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </main>
     </div>

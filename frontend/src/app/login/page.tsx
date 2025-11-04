@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { login, setToken } from '../services/authService';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -12,23 +13,25 @@ export default function LoginPage() {
     setLoading(true);
 
     const form = new FormData(e.currentTarget);
-    const payload = Object.fromEntries(form.entries());
+    const email = form.get('email') as string;
+    const password = form.get('password') as string;
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      // Use auth service for login
+      const response = await login({ email, password });
+      
+      // Store token
+      setToken(response.access_token);
 
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || "Login failed");
-      }
-
-      window.location.href = "/dashboard";
+      // Redirect to expenses page
+      window.location.href = "/expenses";
     } catch (err: any) {
-      setError(err.message);
+      // Handle different error types
+      if (err.message.includes('fetch') || err.message.includes('network')) {
+        setError("Network error. Please check your connection and try again.");
+      } else {
+        setError(err.message || "Login failed. Please check your credentials.");
+      }
     } finally {
       setLoading(false);
     }
@@ -113,4 +116,3 @@ export default function LoginPage() {
     </main>
   );
 }
-  

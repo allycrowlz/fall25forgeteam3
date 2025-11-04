@@ -1,9 +1,17 @@
 import logfire
+import sys
+import os
+from pathlib import Path
+
+# Add parent directories to path for imports
+root_dir = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(root_dir))
+
 from fastapi import FastAPI, HTTPException, status, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fall25forgeteam3.database.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
+from database.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
 from database.connection import get_connection
-from app.security import get_password_hash, create_access_token, verify_password, decode_token
+from .security import get_password_hash, create_access_token, verify_password, decode_token
 
 logfire.configure()
 logfire.info('Hello, {name}!', name='world')
@@ -141,6 +149,84 @@ async def login(credentials: UserLogin):
     return {
         "access_token": access_token,
         "token_type": "bearer"
+    }
+
+@app.post("/api/auth/refresh")
+async def refresh_token(authorization: str = Header(None)):
+    """
+    Refresh an access token. Accepts an expired or soon-to-expire token
+    and returns a new access token.
+    """
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing"
+        )
+    
+    try:
+        token = authorization.split(" ")[1]
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format"
+        )
+    
+    # Try to decode the token (even if expired, we allow refresh)
+    from jose import jwt, JWTError
+    from .security import SECRET_KEY, ALGORITHM
+    
+    try:
+        # Try to decode without checking expiration
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
+        user_id = payload.get("sub")
+        
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token"
+            )
+        
+        # Verify user still exists
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "SELECT profile_id FROM profile WHERE profile_id = %s",
+            (user_id,)
+        )
+        user = cursor.fetchone()
+        
+        cursor.close()
+        conn.close()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found"
+            )
+        
+        # Create new token
+        new_access_token = create_access_token(int(user_id))
+        
+        return {
+            "access_token": new_access_token,
+            "token_type": "bearer"
+        }
+        
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
+@app.post("/api/auth/logout")
+async def logout(user_id: str = Depends(get_current_user_from_token)):
+    """
+    Logout endpoint. Since JWTs are stateless, this mainly acknowledges
+    the logout request. The client should clear the token.
+    """
+    return {
+        "message": "Logged out successfully"
     }
 
 @app.get("/api/auth/me", response_model=UserResponse)
