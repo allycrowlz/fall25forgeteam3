@@ -153,7 +153,7 @@ export default function Home() {
                 ))}
               </div>
               <div className="flex justify-end">
-                <Link href="/shoppinglist" className="flex items-center gap-2 text-base font-semibold hover:opacity-80 group" style={{ color: '#4C331D' }}>
+                <Link href="/lists" className="flex items-center gap-2 text-base font-semibold hover:opacity-80 group" style={{ color: '#4C331D' }}>
                   See All Lists
                   <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
                 </Link>
