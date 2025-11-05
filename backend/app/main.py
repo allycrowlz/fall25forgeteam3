@@ -1,22 +1,14 @@
 import logfire
-from fastapi import FastAPI, HTTPException, status, Header, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from fall25forgeteam3.database.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
+from fastapi import APIRouter, FastAPI, HTTPException, status, Header, Depends
+from database.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
 from database.connection import get_connection
 from app.security import get_password_hash, create_access_token, verify_password, decode_token
+
+router = APIRouter()
 
 logfire.configure()
 logfire.info('Hello, {name}!', name='world')
 
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 async def get_current_user_from_token(authorization: str = Header(None)):
     """
@@ -46,11 +38,11 @@ async def get_current_user_from_token(authorization: str = Header(None)):
     
     return user_id
 
-@app.get("/")
+@router.get("/")
 async def root():
     return {"message": "Homebase API is running!"}
 
-@app.post("/api/auth/register")
+@router.post("/api/auth/register")
 async def register(user_data: ProfileCreate):
 
     conn = get_connection()
@@ -102,7 +94,7 @@ async def register(user_data: ProfileCreate):
     }
 
 
-@app.post("/api/auth/login")
+@router.post("/api/auth/login")
 async def login(credentials: UserLogin):
 
     conn = get_connection()
@@ -143,7 +135,7 @@ async def login(credentials: UserLogin):
         "token_type": "bearer"
     }
 
-@app.get("/api/auth/me", response_model=UserResponse)
+@router.get("/api/auth/me", response_model=UserResponse)
 async def get_current_user(user_id: str = Depends(get_current_user_from_token)):
     
     conn = get_connection()
@@ -173,7 +165,7 @@ async def get_current_user(user_id: str = Depends(get_current_user_from_token)):
     )
 
 
-@app.put("/api/users/me", response_model=UserResponse)
+@router.put("/api/users/me", response_model=UserResponse)
 async def update_user(user_update: UserUpdate, user_id: str = Depends(get_current_user_from_token)):
 
     conn = get_connection()
@@ -183,16 +175,16 @@ async def update_user(user_update: UserUpdate, user_id: str = Depends(get_curren
     update_values = []
     
     if user_update.profile_name is not None:
-        update_fields.append("profile_name = %s")
-        update_values.append(user_update.profile_name)
+        update_fields.routerend("profile_name = %s")
+        update_values.routerend(user_update.profile_name)
     
     if user_update.picture is not None:
-        update_fields.append("picture = %s")
-        update_values.append(user_update.picture)
+        update_fields.routerend("picture = %s")
+        update_values.routerend(user_update.picture)
     
     if user_update.birthday is not None:
-        update_fields.append("birthday = %s")
-        update_values.append(user_update.birthday)
+        update_fields.routerend("birthday = %s")
+        update_values.routerend(user_update.birthday)
 
     if not update_fields:
         cursor.close()
@@ -202,7 +194,7 @@ async def update_user(user_update: UserUpdate, user_id: str = Depends(get_curren
             detail="No fields to update"
         )
     
-    update_values.append(user_id)
+    update_values.routerend(user_id)
 
     query = f"UPDATE profile SET {', '.join(update_fields)} WHERE profile_id = %s RETURNING profile_id, profile_name, email, picture, birthday"
 
