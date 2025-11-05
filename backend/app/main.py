@@ -1,30 +1,14 @@
 import logfire
-import sys
-import os
-from pathlib import Path
-
-# Add parent directories to path for imports
-root_dir = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(root_dir))
-
-from fastapi import FastAPI, HTTPException, status, Header, Depends
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter, HTTPException, status, Header, Depends
 from database.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
 from database.connection import get_connection
-from .security import get_password_hash, create_access_token, verify_password, decode_token
+from app.security import get_password_hash, create_access_token, verify_password, decode_token
+
+router = APIRouter()
 
 logfire.configure()
 logfire.info('Hello, {name}!', name='world')
 
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 async def get_current_user_from_token(authorization: str = Header(None)):
     """
@@ -54,11 +38,11 @@ async def get_current_user_from_token(authorization: str = Header(None)):
     
     return user_id
 
-@app.get("/")
+@router.get("/")
 async def root():
     return {"message": "Homebase API is running!"}
 
-@app.post("/api/auth/register")
+@router.post("/api/auth/register")
 async def register(user_data: ProfileCreate):
 
     conn = get_connection()
@@ -110,7 +94,7 @@ async def register(user_data: ProfileCreate):
     }
 
 
-@app.post("/api/auth/login")
+@router.post("/api/auth/login")
 async def login(credentials: UserLogin):
 
     conn = get_connection()
@@ -151,7 +135,7 @@ async def login(credentials: UserLogin):
         "token_type": "bearer"
     }
 
-@app.post("/api/auth/refresh")
+@router.post("/api/auth/refresh")
 async def refresh_token(authorization: str = Header(None)):
     """
     Refresh an access token. Accepts an expired or soon-to-expire token
@@ -173,7 +157,7 @@ async def refresh_token(authorization: str = Header(None)):
     
     # Try to decode the token (even if expired, we allow refresh)
     from jose import jwt, JWTError
-    from .security import SECRET_KEY, ALGORITHM
+    from app.security import SECRET_KEY, ALGORITHM
     
     try:
         # Try to decode without checking expiration
@@ -219,7 +203,7 @@ async def refresh_token(authorization: str = Header(None)):
             detail="Invalid token"
         )
 
-@app.post("/api/auth/logout")
+@router.post("/api/auth/logout")
 async def logout(user_id: str = Depends(get_current_user_from_token)):
     """
     Logout endpoint. Since JWTs are stateless, this mainly acknowledges
@@ -229,7 +213,7 @@ async def logout(user_id: str = Depends(get_current_user_from_token)):
         "message": "Logged out successfully"
     }
 
-@app.get("/api/auth/me", response_model=UserResponse)
+@router.get("/api/auth/me", response_model=UserResponse)
 async def get_current_user(user_id: str = Depends(get_current_user_from_token)):
     
     conn = get_connection()
@@ -259,7 +243,7 @@ async def get_current_user(user_id: str = Depends(get_current_user_from_token)):
     )
 
 
-@app.put("/api/users/me", response_model=UserResponse)
+@router.put("/api/users/me", response_model=UserResponse)
 async def update_user(user_update: UserUpdate, user_id: str = Depends(get_current_user_from_token)):
 
     conn = get_connection()

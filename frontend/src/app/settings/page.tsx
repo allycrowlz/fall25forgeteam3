@@ -18,17 +18,6 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 text-black">
-      <header className="bg-gray-300 shadow-md px-8 py-4 border-b-4 border-gray-400">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <span className="text-2xl font-bold">Settings</span>
-          </div>
-          <nav className="flex gap-8 items-center">
-            <a href="/groups" className="text-gray-700 font-semibold hover:text-black transition-colors">Groups</a>
-            <a href="/profile" className="text-gray-700 font-semibold hover:text-black transition-colors">Profile</a>
-          </nav>
-        </div>
-      </header>
       <main className="max-w-2xl mx-auto px-8 py-12">
         <div className="bg-white rounded-3xl p-8 shadow-xl border-2 border-gray-300">
           <h1 className="text-4xl font-bold mb-4">Settings</h1>

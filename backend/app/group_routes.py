@@ -1,22 +1,30 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 import string
 import random
 from psycopg2.extras import RealDictCursor
-from database.connection import get_connection
 
-app = FastAPI()
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from database import connection
+from database.pydanticmodels import ExpenseItemCreate, Group
+from database import expense_queries
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Your frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+router = APIRouter()
+
+
+class GroupMember(BaseModel):
+    profile_id: int
+    profile_name: str
+    email: str
+    picture: Optional[str]
+    role: str
+    is_creator: bool
 
 
 # Invite code generation utility
@@ -40,10 +48,10 @@ class JoinGroup(BaseModel):
     profile_id: int
 
 # POST /api/groups - Create a new group
-@app.post("/api/groups", status_code=201)
+@router.post("/api/groups", status_code=201)
 async def create_group(group: GroupCreate):
 
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -79,10 +87,10 @@ async def create_group(group: GroupCreate):
         conn.close()
 
 # POST /api/groups/join - Join a group using join code
-@app.post("/api/groups/join")
+@router.post("/api/groups/join")
 async def join_group(join_data: JoinGroup):
 
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -128,33 +136,33 @@ async def join_group(join_data: JoinGroup):
         conn.close()
 
 # GET /api/groups - Get all groups for current user
-@app.get("/api/groups")
+@router.get('/api/groups')
 async def get_groups(profile_id: int):
 
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
         cur.execute("""
             SELECT g.group_id, g.group_name, g.date_created, g.group_photo, 
-                   gp.role,
+                   gp.role, g.join_code,
                    (gp.role = 'creator') as is_creator
-            FROM "group" g
+            FROM "Group" g
             INNER JOIN groupprofile gp ON g.group_id = gp.group_id
             WHERE gp.profile_id = %s
             ORDER BY g.date_created DESC
         """, (profile_id,))
         
-        rows = cur.fetchall()
-        return [dict(row) for row in rows]
+        groupData = cur.fetchall()
+        return [Group(**group) for group in groupData]
     finally:
         cur.close()
         conn.close()
 
 # GET /api/groups/:id - Get a specific group
-@app.get("/api/groups/{id}")
+@router.get("/api/groups/{id}")
 async def get_group(id: int, profile_id: int):
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -178,21 +186,21 @@ async def get_group(id: int, profile_id: int):
         conn.close()
 
 # GET /api/groups/:id/members - Get all members of a group
-@app.get("/api/groups/{id}/members")
-async def get_group_members(id: int, profile_id: int):
-    conn = get_connection()
+@router.get("/api/groups/{id}/members")
+async def get_group_members(id: int):
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
         cur.execute("""
             SELECT group_id FROM groupprofile
-            WHERE group_id = %s AND profile_id = %s
-        """, (id, profile_id))
+            WHERE group_id = %s
+        """, (id,))
         
         membership = cur.fetchone()
         
-        if not membership:
-            raise HTTPException(status_code=403, detail="Access denied")
+        # if not membership:
+        #     raise HTTPException(status_code=403, detail="Access denied")
  
         cur.execute("""
             SELECT p.profile_id, p.profile_name, p.email, p.picture,
@@ -203,17 +211,18 @@ async def get_group_members(id: int, profile_id: int):
             WHERE gp.group_id = %s
             ORDER BY gp.role DESC, p.profile_name
         """, (id,))
+
         
-        rows = cur.fetchall()
-        return [dict(row) for row in rows]
+        members = cur.fetchall()
+        return [GroupMember(**member) for member in members]
     finally:
         cur.close()
         conn.close()
 
 # PUT /api/groups/:id - Update a group
-@app.put("/api/groups/{id}")
+@router.put("/api/groups/{id}")
 async def update_group(id: int, group: GroupUpdate, profile_id: int):
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -251,9 +260,9 @@ async def update_group(id: int, group: GroupUpdate, profile_id: int):
         conn.close()
 
 # DELETE /api/groups/:id/members/:user_id - Remove a member from group
-@app.delete("/api/groups/{id}/members/{user_id}")
+@router.delete("/api/groups/{id}/members/{user_id}")
 async def remove_member(id: int, user_id: int, profile_id: int):
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -297,9 +306,9 @@ async def remove_member(id: int, user_id: int, profile_id: int):
         conn.close()
 
 # POST /api/groups/:id/leave - Leave a group
-@app.post("/api/groups/{id}/leave")
+@router.post("/api/groups/{id}/leave")
 async def leave_group(id: int, profile_id: int):
-    conn = get_connection()
+    conn = connection.get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
