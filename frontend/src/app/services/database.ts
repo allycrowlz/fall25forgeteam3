@@ -1,3 +1,12 @@
+// Automatically detect backend URL based on current hostname
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    return `http://${hostname}:8000`;
+  }
+  return 'http://127.0.0.1:8000';
+};
+const API_BASE_URL = getApiBaseUrl();
 
 type Expense = {
     item_name: String;
@@ -9,19 +18,19 @@ type Expense = {
 }
 
 export async function getUserGroups(profileId: number) {
-    const response = await fetch(`http://127.0.0.1:8000/api/groups?profile_id=${profileId}`);
+    const response = await fetch(`${API_BASE_URL}/api/groups?profile_id=${profileId}`);
     if (!response.ok) throw new Error(response.statusText)
     return response.json();
 }
 
 export async function getGroupMembers(groupId : number) {
-    const response = await fetch(`http://127.0.0.1:8000/api/groups/${groupId}/members`);
+    const response = await fetch(`${API_BASE_URL}/api/groups/${groupId}/members`);
     if (!response.ok) throw new Error("Failed to fetch groups.");
     return response.json();
 }
 
 export async function getGroupExpenseLists(groupId : number) {
-    const response = await fetch(`http://127.0.0.1:8000/api/groups/${groupId}/expenselists`);
+    const response = await fetch(`${API_BASE_URL}/api/groups/${groupId}/expenselists`);
     if (!response.ok) throw new Error("Failed to fetch groups.");
     return response.json();
 }
@@ -41,7 +50,7 @@ export async function postExpense(expenseName: String,
         notes: notes,
         bought_by_id: payer
     };
-    const response = await fetch("http://127.0.0.1:8000/api/expenseslists/expenses", {
+    const response = await fetch(`${API_BASE_URL}/api/expenseslists/expenses`, {
      method: "POST",
       headers: {
         "Content-Type": "application/json",

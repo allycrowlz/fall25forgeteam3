@@ -12,8 +12,12 @@ from database import expense_queries
 
 router = APIRouter()
 
-logfire.configure(token="pylf_v1_us_2YgWR7VMR3yLB7JrQPnwQJt3MFQPqW1jWKPg5p2klfMj")  
-logfire.info('Instantiation')
+try:
+    logfire.configure(token="pylf_v1_us_2YgWR7VMR3yLB7JrQPnwQJt3MFQPqW1jWKPg5p2klfMj")  
+    logfire.info('Instantiation')
+except Exception:
+    # Logfire not configured, continue without it
+    pass
 
 @router.get("/")
 async def root():

@@ -6,8 +6,12 @@ from app.security import get_password_hash, create_access_token, verify_password
 
 router = APIRouter()
 
-logfire.configure()
-logfire.info('Hello, {name}!', name='world')
+try:
+    logfire.configure()
+    logfire.info('Hello, {name}!', name='world')
+except Exception:
+    # Logfire not configured, continue without it
+    pass
 
 
 async def get_current_user_from_token(authorization: str = Header(None)):

@@ -1,4 +1,12 @@
-const API_BASE_URL = 'http://localhost:8000/api';
+// Automatically detect backend URL based on current hostname
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    return `http://${hostname}:8000/api`;
+  }
+  return 'http://localhost:8000/api';
+};
+const API_BASE_URL = getApiBaseUrl();
 
 export interface Group {
     group_id: number;

@@ -3,7 +3,19 @@
  */
 
 const TOKEN_KEY = 'access_token';
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Automatically detect backend URL based on current hostname
+const getApiBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== 'undefined') {
+    // Use the same hostname as the frontend, but port 8000
+    const hostname = window.location.hostname;
+    return `http://${hostname}:8000`;
+  }
+  return 'http://localhost:8000';
+};
+const API_BASE_URL = getApiBaseUrl();
 
 export interface LoginCredentials {
   email: string;
