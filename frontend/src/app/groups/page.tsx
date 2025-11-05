@@ -27,60 +27,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header Navigation */}
-      <header className="shadow-md px-8 py-4" style={{ backgroundColor: '#407947' }}>
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          {/* Left side - Logo, Dropdown and Add Button */}
-          <div className="flex items-center gap-4">
-            <span className="text-3xl font-extrabold tracking-tight text-white mr-4">
-              HomeB<span className="inline-block -translate-y-0.5">🏠</span>se
-            </span>
-            <select className="w-96 px-4 py-3 bg-white border-2 border-gray-400 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all" style={{ color: '#4C331D' }}>
-              <option value="">Select a Group</option>
-              <option>Group 1</option>
-              <option>Group 2</option>
-              <option>Group 3</option>
-            </select>
-            <Link 
-              href="/groups/join"
-              className="px-6 py-3 rounded-xl font-semibold hover:opacity-90 transition-all shadow-md hover:shadow-lg transform hover:scale-105 whitespace-nowrap"
-              style={{ backgroundColor: '#CFDFD1', color: '#4C331D' }}
-            >
-              + Add Group
-            </Link>
-          </div>
-
-          {/* Right side - Navigation Links */}
-          <nav className="flex gap-8 items-center">
-            <a href="#" className="text-white font-semibold underline hover:text-emerald-100 transition-colors">
-              Home
-            </a>
-            <a href="#" className="text-white font-semibold hover:text-emerald-100 transition-colors">
-              Lists
-            </a>
-            <a href="#" className="text-white font-semibold hover:text-emerald-100 transition-colors">
-              Chores
-            </a>
-            <a href="#" className="text-white font-semibold hover:text-emerald-100 transition-colors">
-              Expenses
-            </a>
-            <a href="#" className="text-white font-semibold hover:text-emerald-100 transition-colors">
-              Profile
-            </a>
-            <a href="#" className="text-white font-semibold hover:text-emerald-100 transition-colors">
-              Settings
-            </a>
-          </nav>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column */}
           <div>
             <h1 className="text-5xl font-bold mb-8" style={{ color: '#407947' }}>
-              Welcome, [Name] 👋
+              Welcome, [Name]!
             </h1>
 
             {/* Calendar Section */}
