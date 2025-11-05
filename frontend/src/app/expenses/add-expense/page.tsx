@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Navbar from '../navbar'
 import { getGroupExpenseLists, getGroupMembers, getUserGroups, postExpense } from '@/app/services/database';
 import { Group } from 'next/dist/shared/lib/router/utils/route-regex';
+import ProtectedRoute from '@/app/components/ProtectedRoute';
 
 type GroupInfo = {
   group_id: number;
@@ -30,7 +31,7 @@ type GroupExpenseList = {
   date_closed: Date | null;
 }
 
-export default function AddExpense() {
+function AddExpenseContent() {
   const router = useRouter();
 
   const [isRecurring, setIsRecurring] = useState<boolean>(false);
@@ -330,4 +331,12 @@ export default function AddExpense() {
       </div>
     </div>
   )
+}
+
+export default function AddExpense() {
+  return (
+    <ProtectedRoute>
+      <AddExpenseContent />
+    </ProtectedRoute>
+  );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import ProtectedRoute from '../components/ProtectedRoute';
 
 // Colors
 const PAGE_BG = "#E8F3E9"; // page background
@@ -40,7 +41,7 @@ type CalEvent = { id: string; title: string; time?: string; notes?: string };
 
 type EventMap = Record<string, CalEvent[]>; // keyed by YYYY-MM-DD
 
-export default function CalendarPage() {
+function CalendarContent() {
   const [viewDate, setViewDate] = useState(new Date());
   const [selected, setSelected] = useState<Date | null>(new Date());
   const [events, setEvents] = useState<EventMap>({});
@@ -276,5 +277,13 @@ export default function CalendarPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CalendarPage() {
+  return (
+    <ProtectedRoute>
+      <CalendarContent />
+    </ProtectedRoute>
   );
 }

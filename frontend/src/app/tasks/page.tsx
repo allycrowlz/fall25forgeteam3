@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { Check, Plus } from 'lucide-react';
+import ProtectedRoute from '../components/ProtectedRoute';
 
-export default function TasksPage() {
+function TasksContent() {
   const [tasks, setTasks] = useState([
     { id: 1, roommate: 'Roommate 1', task: '', completed: false },
     { id: 2, roommate: 'Roommate 1', task: '', completed: false },
@@ -110,5 +111,13 @@ export default function TasksPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <ProtectedRoute>
+      <TasksContent />
+    </ProtectedRoute>
   );
 }

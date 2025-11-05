@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { Plus, Star, Upload } from "lucide-react";
+import ProtectedRoute from '../components/ProtectedRoute';
 
 // Types
 type CategoryKey = "Meat" | "Produce" | "Dairy" | "Other";
@@ -64,7 +65,7 @@ function Section({
   );
 }
 
-export default function ShoppingListPage() {
+function ShoppingListContent() {
   const [categories, setCategories] = useState<CategoryMap>({
     Meat: [],
     Produce: [],
@@ -139,5 +140,13 @@ export default function ShoppingListPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function ShoppingListPage() {
+  return (
+    <ProtectedRoute>
+      <ShoppingListContent />
+    </ProtectedRoute>
   );
 }

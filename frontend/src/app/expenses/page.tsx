@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import ProtectedRoute from '../components/ProtectedRoute'
 
-export default function Dashboard() {
+function ExpensesContent() {
   const [activeTab, setActiveTab] = useState('All')
   const router = useRouter()
 
@@ -159,4 +160,12 @@ export default function Dashboard() {
       </div>
     </div>
   )
+}
+
+export default function Dashboard() {
+  return (
+    <ProtectedRoute>
+      <ExpensesContent />
+    </ProtectedRoute>
+  );
 }

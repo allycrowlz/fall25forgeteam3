@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from 'react';
+import ProtectedRoute from '../components/ProtectedRoute';
 
-export default function Home() {
+function GroupsContent() {
   const [selectedDate, setSelectedDate] = useState(8);
   
   // Generate calendar days for October 2020
@@ -163,5 +164,13 @@ export default function Home() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <ProtectedRoute>
+      <GroupsContent />
+    </ProtectedRoute>
   );
 }

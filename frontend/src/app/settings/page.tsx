@@ -2,8 +2,9 @@
 
 import { logout } from '../services/authService';
 import { useRouter } from 'next/navigation';
+import ProtectedRoute from '../components/ProtectedRoute';
 
-export default function SettingsPage() {
+function SettingsContent() {
   const router = useRouter();
 
   async function handleLogout() {
@@ -56,5 +57,13 @@ export default function SettingsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <ProtectedRoute>
+      <SettingsContent />
+    </ProtectedRoute>
   );
 }

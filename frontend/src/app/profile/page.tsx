@@ -1,4 +1,8 @@
-export default function ProfilePage() {
+'use client';
+
+import ProtectedRoute from '../components/ProtectedRoute';
+
+function ProfileContent() {
   return (
     <div className="min-h-screen bg-gray-100 text-black">
       <main className="max-w-2xl mx-auto px-8 py-12">
@@ -31,5 +35,13 @@ export default function ProfilePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <ProtectedRoute>
+      <ProfileContent />
+    </ProtectedRoute>
   );
 }
