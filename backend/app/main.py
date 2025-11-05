@@ -1,5 +1,5 @@
 import logfire
-from fastapi import APIRouter, FastAPI, HTTPException, status, Header, Depends
+from fastapi import APIRouter, HTTPException, status, Header, Depends
 from database.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
 from database.connection import get_connection
 from app.security import get_password_hash, create_access_token, verify_password, decode_token
@@ -135,6 +135,84 @@ async def login(credentials: UserLogin):
         "token_type": "bearer"
     }
 
+@router.post("/api/auth/refresh")
+async def refresh_token(authorization: str = Header(None)):
+    """
+    Refresh an access token. Accepts an expired or soon-to-expire token
+    and returns a new access token.
+    """
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing"
+        )
+    
+    try:
+        token = authorization.split(" ")[1]
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format"
+        )
+    
+    # Try to decode the token (even if expired, we allow refresh)
+    from jose import jwt, JWTError
+    from app.security import SECRET_KEY, ALGORITHM
+    
+    try:
+        # Try to decode without checking expiration
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
+        user_id = payload.get("sub")
+        
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token"
+            )
+        
+        # Verify user still exists
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "SELECT profile_id FROM profile WHERE profile_id = %s",
+            (user_id,)
+        )
+        user = cursor.fetchone()
+        
+        cursor.close()
+        conn.close()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found"
+            )
+        
+        # Create new token
+        new_access_token = create_access_token(int(user_id))
+        
+        return {
+            "access_token": new_access_token,
+            "token_type": "bearer"
+        }
+        
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
+@router.post("/api/auth/logout")
+async def logout(user_id: str = Depends(get_current_user_from_token)):
+    """
+    Logout endpoint. Since JWTs are stateless, this mainly acknowledges
+    the logout request. The client should clear the token.
+    """
+    return {
+        "message": "Logged out successfully"
+    }
+
 @router.get("/api/auth/me", response_model=UserResponse)
 async def get_current_user(user_id: str = Depends(get_current_user_from_token)):
     
@@ -175,16 +253,16 @@ async def update_user(user_update: UserUpdate, user_id: str = Depends(get_curren
     update_values = []
     
     if user_update.profile_name is not None:
-        update_fields.routerend("profile_name = %s")
-        update_values.routerend(user_update.profile_name)
+        update_fields.append("profile_name = %s")
+        update_values.append(user_update.profile_name)
     
     if user_update.picture is not None:
-        update_fields.routerend("picture = %s")
-        update_values.routerend(user_update.picture)
+        update_fields.append("picture = %s")
+        update_values.append(user_update.picture)
     
     if user_update.birthday is not None:
-        update_fields.routerend("birthday = %s")
-        update_values.routerend(user_update.birthday)
+        update_fields.append("birthday = %s")
+        update_values.append(user_update.birthday)
 
     if not update_fields:
         cursor.close()
@@ -194,7 +272,7 @@ async def update_user(user_update: UserUpdate, user_id: str = Depends(get_curren
             detail="No fields to update"
         )
     
-    update_values.routerend(user_id)
+    update_values.append(user_id)
 
     query = f"UPDATE profile SET {', '.join(update_fields)} WHERE profile_id = %s RETURNING profile_id, profile_name, email, picture, birthday"
 

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# These should be moved to environment variables in production
 SECRET_KEY = "secret-key-change-this-later"
 ALGORITHM = "HS256"
 

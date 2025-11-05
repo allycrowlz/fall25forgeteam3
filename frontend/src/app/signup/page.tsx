@@ -2,37 +2,87 @@
 
 import Link from "next/link";
 import { useState } from "react";
-
+import { register, setToken } from '../services/authService';
 
 export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  function validateForm(payload: Record<string, FormDataEntryValue>): boolean {
+    const errors: Record<string, string> = {};
+
+    // Email validation
+    if (!payload.email || typeof payload.email !== 'string') {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(payload.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    // Password validation
+    if (!payload.password || typeof payload.password !== 'string') {
+      errors.password = 'Password is required';
+    } else if (payload.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(payload.password)) {
+      errors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
+    }
+
+    // Confirm password validation
+    if (!payload.confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password';
+    } else if (payload.password !== payload.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+
+    // Name validation
+    if (!payload.profile_name || typeof payload.profile_name !== 'string' || payload.profile_name.trim().length === 0) {
+      errors.profile_name = 'Name is required';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setValidationErrors({});
     setLoading(true);
 
     const form = new FormData(e.currentTarget);
     const payload = Object.fromEntries(form.entries());
 
+    // Validate form
+    if (!validateForm(payload)) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Replace with your actual API route or Python backend endpoint
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      // Use auth service for registration
+      const response = await register({
+        profile_name: payload.profile_name as string,
+        email: payload.email as string,
+        password: payload.password as string,
+        picture: payload.picture ? (payload.picture as string) : null,
+        birthday: payload.birthday ? (payload.birthday as string) : null,
       });
 
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || "Signup failed");
-      }
+      // Store token and auto-login
+      setToken(response.access_token);
 
-      // Redirect or show success state
-      window.location.href = "/dashboard"; // adjust to your app
+      // Redirect to groups
+      window.location.href = "/groups";
     } catch (err: any) {
-      setError(err.message);
+      // Handle different error types
+      if (err.message.includes('fetch') || err.message.includes('network')) {
+        setError("Network error. Please check your connection and try again.");
+      } else if (err.message.includes('already registered') || err.message.includes('already exists')) {
+        setError("This email is already registered. Please use a different email or login.");
+      } else {
+        setError(err.message || "Registration failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -65,12 +115,17 @@ export default function SignUpPage() {
               </label>
               <input
                 id="name"
-                name="name"
+                name="profile_name"
                 type="text"
                 required
                 placeholder="Jane Doe"
-                className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                className={`mt-1 w-full rounded-md border ${
+                  validationErrors.profile_name ? 'border-red-300' : 'border-zinc-300'
+                } bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600`}
               />
+              {validationErrors.profile_name && (
+                <p className="mt-1 text-xs text-red-600">{validationErrors.profile_name}</p>
+              )}
             </div>
 
             {/* Email */}
@@ -85,8 +140,13 @@ export default function SignUpPage() {
                 inputMode="email"
                 required
                 placeholder="you@example.com"
-                className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                className={`mt-1 w-full rounded-md border ${
+                  validationErrors.email ? 'border-red-300' : 'border-zinc-300'
+                } bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600`}
               />
+              {validationErrors.email && (
+                <p className="mt-1 text-xs text-red-600">{validationErrors.email}</p>
+              )}
             </div>
 
             {/* Phone (optional) */}
@@ -119,6 +179,61 @@ export default function SignUpPage() {
                 type="password"
                 required
                 placeholder="••••••••"
+                className={`mt-1 w-full rounded-md border ${
+                  validationErrors.password ? 'border-red-300' : 'border-zinc-300'
+                } bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600`}
+              />
+              {validationErrors.password && (
+                <p className="mt-1 text-xs text-red-600">{validationErrors.password}</p>
+              )}
+              <p className="mt-1 text-xs text-zinc-500">
+                Must contain uppercase, lowercase, and number
+              </p>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-zinc-700">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                placeholder="••••••••"
+                className={`mt-1 w-full rounded-md border ${
+                  validationErrors.confirmPassword ? 'border-red-300' : 'border-zinc-300'
+                } bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600`}
+              />
+              {validationErrors.confirmPassword && (
+                <p className="mt-1 text-xs text-red-600">{validationErrors.confirmPassword}</p>
+              )}
+            </div>
+
+            {/* Birthday (optional) */}
+            <div>
+              <label htmlFor="birthday" className="block text-sm font-medium text-zinc-700">
+                Birthday
+              </label>
+              <input
+                id="birthday"
+                name="birthday"
+                type="date"
+                className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+              />
+            </div>
+
+            {/* Profile Picture URL (optional) */}
+            <div>
+              <label htmlFor="picture" className="block text-sm font-medium text-zinc-700">
+                Profile Picture URL
+              </label>
+              <input
+                id="picture"
+                name="picture"
+                type="text"
+                placeholder="https://example.com/your-profile-pic.jpg"
                 className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
