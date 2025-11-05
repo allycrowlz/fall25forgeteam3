@@ -21,12 +21,12 @@ function Section({
 }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 rounded-md border border-[#a8c09e]/60 bg-[#eef6ea] px-3 py-2">
-        <span className="grow text-center font-medium text-[#2b4a2e]">{title}</span>
+      <div className="flex items-center gap-2 rounded-md border border-[#4C331D] bg-[#DCCEBD] px-3 py-2">
+        <span className="grow text-center font-medium text-[#4C331D]">{title}</span>
         <button
           aria-label={`add ${title} item`}
           onClick={() => onAdd(title)}
-          className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[#a8c09e] text-[#2b4a2e] hover:bg-[#dfeede]"
+          className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[#4C331D] text-[#4C331D] hover:bg-[#cbbead]"
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -37,7 +37,7 @@ function Section({
           {[...Array(3)].map((_, i) => (
             <div
               key={i}
-              className="h-6 rounded-full bg-neutral-200/70"/>
+              className="h-6 rounded-full bg-white border border-[#4C331D]"/>
           ))}
         </div>
       ) : (
@@ -98,11 +98,11 @@ export default function ShoppingListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-[#2b4a2e]">
+    <div className="min-h-screen" style={{ backgroundColor: '#E8F3E9' }}>
       {/* Content */}
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-6 flex items-end justify-between">
-          <h1 className="text-5xl font-extrabold">Shopping List</h1>
+          <h1 className="text-5xl font-extrabold text-[#4C331D]">Shopping List</h1>
           <p className="text-lg text-[#2b4a2e]/80">
             {remaining.total - remaining.done} out of {remaining.total || "__"} items remaining
           </p>

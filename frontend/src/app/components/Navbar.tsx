@@ -16,7 +16,7 @@ export default function Navbar({ colors, showGroupControls = false }: NavbarProp
   return (
     <header
       className="shadow-md px-8 py-4"
-      style={{ backgroundColor: navColors.bg }}
+      style={{ backgroundColor: navColors.bg , borderColor: navColors.text , borderWidth: "1px" , borderStyle: "solid" }}
     >
       <div className="flex items-center justify-between max-w-7xl mx-auto">
         {/* Logo (and optionally Dropdown + Add Button) */}
@@ -71,7 +71,7 @@ export default function Navbar({ colors, showGroupControls = false }: NavbarProp
             Calendar
           </Link>
           <Link
-            href="/shoppinglist"
+            href="/lists"
             className={linkTextClassname}
             style={{ color: navColors.text }}
           >
