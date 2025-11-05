@@ -4,49 +4,6 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100 text-black">
-      {/* Header Navigation */}
-      <header className="bg-gray-300 shadow-md px-8 py-4 border-b-4 border-gray-400">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          {/* Left side - Dropdown and Add Button */}
-          <div className="flex items-center gap-4">
-            <select className="w-96 px-4 py-3 bg-white border-2 border-gray-400 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all">
-              <option value="">Select a Group</option>
-              <option className="bg-blue-100">Group 1</option>
-              <option className="bg-green-100">Group 2</option>
-              <option className="bg-purple-100">Group 3</option>
-            </select>
-            <Link 
-              href="/groups/join"
-              className="px-6 py-3 bg-gray-600 text-white rounded-xl font-semibold hover:bg-gray-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105 whitespace-nowrap"
-            >
-              + Add Group
-            </Link>
-          </div>
-
-          {/* Right side - Navigation Links */}
-          <nav className="flex gap-8 items-center">
-            <a href="#" className="text-black font-semibold underline hover:text-gray-700 transition-colors">
-              Home
-            </a>
-            <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
-              Lists
-            </a>
-            <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
-              Chores
-            </a>
-            <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
-              Expenses
-            </a>
-            <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
-              Profile
-            </a>
-            <a href="#" className="text-gray-700 font-semibold hover:text-black transition-colors">
-              Settings
-            </a>
-          </nav>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
