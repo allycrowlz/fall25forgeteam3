@@ -3,32 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '../navbar'
-import { getGroupExpenseLists, getGroupMembers, getUserGroups, postExpense } from '@/app/services/database';
+import { getGroupExpenseLists, getGroupMembers, getUserGroups, postExpense, GroupInfo, GroupExpenseList, UserInfo} from '@/app/services/expenseService';
 import { Group } from 'next/dist/shared/lib/router/utils/route-regex';
 
-type GroupInfo = {
-  group_id: number;
-  group_name: string;
-  date_created: string;
-  group_photo: string | null;
-  role: string;
-  is_creator: boolean;
-}
-
-type UserInfo = {
-  profile_id: number;
-  profile_name: string;
-  email: string;
-  picture: string | null;
-  birthday: Date | null;
-}
-
-type GroupExpenseList = {
-  list_name: string;
-  list_id: number;
-  group_id: number;
-  date_closed: Date | null;
-}
 
 export default function AddExpense() {
   const router = useRouter();
@@ -75,10 +52,9 @@ export default function AddExpense() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Navbar />
+    <div className="p-5 min-h-screen bg-gray-100">
 
-      <div className="px-6 pb-12">
+      <div className="px-6 pb-8">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-800 mb-6">Add New Expense</h1>
 
@@ -96,8 +72,6 @@ export default function AddExpense() {
                     
                     const members : UserInfo[] = await getGroupMembers(newGroupId);
                     setGroupMembers(members);
-                    
-                    setPayer(members[0].profile_id);
                    
                     const lists : GroupExpenseList[] = await getGroupExpenseLists(newGroupId);
                     setGroupExpenseLists(lists);
@@ -176,7 +150,7 @@ export default function AddExpense() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Date
+                    Date *
                   </label>
                   <input
                     type="date"
@@ -213,16 +187,6 @@ export default function AddExpense() {
                     </select>
                   </div>
                 )}
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Notes (Optional)
-                  </label>
-                  <textarea
-                    className="w-full border-2 border-gray-300 text-gray-700 rounded-lg p-2 h-24 focus:border-blue-500 focus:outline-none resize-none"
-                    placeholder="Add any additional details..."
-                  />
-                </div>
               </div>
 
               <div className="space-y-4 border-t pt-6">
@@ -287,7 +251,7 @@ export default function AddExpense() {
                           <input
                             type="number"
                             step="0.01"
-                            className="flex-1 border border-gray-300 rounded p-2 text-sm"
+                            className="flex-1 border border-gray-300 rounded p-2 text-sm bg-white text-gray-700"
                             placeholder="0.00"
                           />
                         </div>
