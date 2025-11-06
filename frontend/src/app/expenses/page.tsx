@@ -8,6 +8,7 @@ export default function Dashboard() {
   const [balance, setBalance] = useState<String>("0.00");
   const [groupSplits, setGroupSplits] = useState<CompleteSplit[]>([]);
   const [activeTab, setActiveTab] = useState<number>(0);
+  const [paid, setPaid] = useState<number[]>([]);
   const router = useRouter();
 
   const expenseSections = ['All', 'Owes Me', 'I Owe'];
@@ -77,6 +78,7 @@ export default function Dashboard() {
                   </button>
                 ))}
               </div>
+              <div className='h-88 overflow-auto'>
               {groupSplits.filter((split) => {
                 if (activeTab == 1) {
                   return split.profile_id != 183;
@@ -98,6 +100,7 @@ export default function Dashboard() {
                   </span>
                 </div>
               ))}
+              </div>
             </div>
 
             <div className="space-y-4">
