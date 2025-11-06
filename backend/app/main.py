@@ -1,12 +1,16 @@
 import logfire
 from fastapi import FastAPI, HTTPException, status, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fall25forgeteam3.database.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
+from database.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
 from database.connection import get_connection
-from app.security import get_password_hash, create_access_token, verify_password, decode_token
+from backend.app.security import get_password_hash, create_access_token, verify_password, decode_token
 
-logfire.configure()
-logfire.info('Hello, {name}!', name='world')
+# Import shopping list router
+from backend.app.shoppingList_routes import router as shopping_list_router
+
+# Logfire configuration disabled for development
+# logfire.configure()
+# logfire.info('Hello, {name}!', name='world')
 
 app = FastAPI()
 
@@ -17,6 +21,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include shopping list routes
+app.include_router(shopping_list_router)
 
 async def get_current_user_from_token(authorization: str = Header(None)):
     """

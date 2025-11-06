@@ -14,15 +14,18 @@ async def create_shopping_list(group_id: int, create_list: CreateShoppingList):
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
-        # Check if list exists first
+        # Check if group exists first
         cur.execute("""
-            SELECT group_id FROM group WHERE group_id = %s
+            SELECT group_id FROM "Group" WHERE group_id = %s
         """, (group_id,))
+        
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Group not found")
 
         cur.execute("""
             INSERT INTO "shopping_list" (list_name, group_id, date_created)
             VALUES (%s, %s, NOW())
-            RETURNING list_id, list_name, date_created, date_closed, group_id
+            RETURNING list_id, list_name, date_created, date_completed as date_closed, group_id
         """, (create_list.list_name, group_id))
         
         conn.commit()
@@ -42,7 +45,7 @@ async def get_lists(group_id: int):
 
     try:
         cur.execute("""
-            SELECT list_id, list_name, date_created, date_closed, group_id
+            SELECT list_id, list_name, date_created, date_completed as date_closed, group_id
             FROM "shopping_list"
             WHERE group_id = %s
             ORDER BY date_created ASC
@@ -63,12 +66,12 @@ async def get_list_with_items(list_id: int):
     
     try:
         cur.execute("""
-            SELECT sl.list_id, sl.list_name, sl.date_created, sl.date_closed, sl.group_id,
-                li.item_id, li.item_name, li.item_quantity, li.added_by, li.date_added, li.bought
+            SELECT sl.list_id, sl.list_name, sl.date_created, sl.date_completed as date_closed, sl.group_id,
+                si.item_id, si.item_name, si.quantity as item_quantity, si.added_by_id as added_by, si.date_added, si.is_purchased as bought
             FROM "shopping_list" sl
-            LEFT JOIN "list_item" li ON sl.list_id = li.list_id
+            LEFT JOIN "shopping_item" si ON sl.list_id = si.list_id
             WHERE sl.list_id = %s
-            ORDER BY li.item_name DESC
+            ORDER BY si.item_name DESC
         """, (list_id,))
         
         rows = cur.fetchall()
@@ -125,9 +128,9 @@ async def add_item_to_list(list_id: int, add_item: AddItem):
             raise HTTPException(status_code=404, detail="List not found")
         
         cur.execute("""
-            INSERT INTO list_item (item_name, list_id, item_quantity, added_by, date_added, bought)
+            INSERT INTO shopping_item (item_name, list_id, quantity, added_by_id, date_added, is_purchased)
             VALUES (%s, %s, %s, %s, NOW(), FALSE)
-            RETURNING item_id, item_name, list_id, item_quantity, added_by, date_added, bought
+            RETURNING item_id, item_name, list_id, quantity as item_quantity, added_by_id as added_by, date_added, is_purchased as bought
         """, (add_item.item_name, list_id, add_item.item_quantity, add_item.added_by))
         
         conn.commit()
@@ -150,8 +153,8 @@ async def update_item(item_id: int, item_to_update: UpdateItem):
 
     try:
         cur.execute("""
-            SELECT *
-            FROM "list_item"
+            SELECT item_id, item_name, list_id, quantity as item_quantity, added_by_id as added_by, date_added, is_purchased as bought
+            FROM "shopping_item"
             WHERE item_id = %s
         """, (item_id,))
         
@@ -167,11 +170,11 @@ async def update_item(item_id: int, item_to_update: UpdateItem):
             params.append(item_to_update.item_name)
         
         if item_to_update.item_quantity is not None:
-            update_fields.append("item_quantity = %s")
+            update_fields.append("quantity = %s")
             params.append(item_to_update.item_quantity)
         
         if item_to_update.bought is not None:
-            update_fields.append("bought = %s")
+            update_fields.append("is_purchased = %s")
             params.append(item_to_update.bought)
 
         # Return existing item if nothing to update
@@ -182,10 +185,10 @@ async def update_item(item_id: int, item_to_update: UpdateItem):
 
         # Execute update
         query = f"""
-            UPDATE "list_item"
+            UPDATE "shopping_item"
             SET {', '.join(update_fields)}
             WHERE item_id = %s
-            RETURNING item_id, item_name, list_id, item_quantity, added_by, date_added, bought
+            RETURNING item_id, item_name, list_id, quantity as item_quantity, added_by_id as added_by, date_added, is_purchased as bought
         """
         cur.execute(query, params)
         conn.commit()
@@ -210,7 +213,7 @@ async def delete_item(item_id: int):
         # Check if item exists
         cur.execute("""
             SELECT item_id
-            FROM "list_item"
+            FROM "shopping_item"
             WHERE item_id = %s
         """, (item_id,))
 
@@ -218,7 +221,7 @@ async def delete_item(item_id: int):
             raise HTTPException(status_code=404, detail="Item not found")
         
         cur.execute("""
-            DELETE FROM "list_item"
+            DELETE FROM "shopping_item"
             WHERE item_id = %s
         """, (item_id,))
 
