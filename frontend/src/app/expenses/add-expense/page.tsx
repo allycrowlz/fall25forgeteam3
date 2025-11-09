@@ -32,15 +32,6 @@ export default function AddExpense() {
         const data = await getUserGroups(155);
         setGroups(data);
 
-        if (data != undefined) {
-          const typedData : GroupInfo[] = data;
-          const users : UserInfo[] = await getGroupMembers(typedData[0].group_id);
-          setGroupMembers(users);
-          
-          const lists = await getGroupExpenseLists(typedData[0].group_id);
-          setGroupExpenseLists(lists);
-        } 
-
       } catch (error) {
         console.error(error);
       } finally {
@@ -52,15 +43,11 @@ export default function AddExpense() {
   }, [])
 
   return (
-    <div className="p-5 min-h-screen bg-gray-100">
-
-      <div className="px-6 pb-8">
+    <div className="min-h-screen bg-gray-100 px-6 pb-8 pt-6">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-800 mb-6">Add New Expense</h1>
+          <div className="bg-white rounded-lg shadow-lg p-8 space-y-6">
 
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <div className="space-y-6">
-              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Group *
@@ -91,7 +78,6 @@ export default function AddExpense() {
                       )}
                     </select>
                   </div>
-                
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       List *
@@ -108,7 +94,6 @@ export default function AddExpense() {
                       }
                     </select>
                   </div>
-
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Expense Name *
@@ -134,10 +119,9 @@ export default function AddExpense() {
                      onChange={(e) => setCost(parseInt(e.target.value))}
                      />
                   </div>
-                </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 pt-6">
                     Description
                   </label>
                   <input
@@ -149,7 +133,7 @@ export default function AddExpense() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 pt-6">
                     Date *
                   </label>
                   <input
@@ -190,14 +174,7 @@ export default function AddExpense() {
               </div>
 
               <div className="space-y-4 border-t pt-6">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-400 transition cursor-pointer">
-                  <div className="text-center">
-                    <div className="text-5xl mb-3">📤</div>
-                    <div className="text-gray-700 font-medium mb-1">Upload Receipt</div>
-                    <div className="text-sm text-gray-500">Click or drag file to upload</div>
-                  </div>
-                </div>
-
+                
                 <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 space-y-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -269,7 +246,7 @@ export default function AddExpense() {
                   Cancel
                 </button>
                 <button
-                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold py-4 rounded-lg hover:from-green-600 hover:to-green-700 transition shadow-lg flex items-center justify-center gap-2"
+                  className="flex-1 bg-green-700 text-white font-semibold py-4 rounded-lg hover:bg-green-800 transition shadow-lg flex items-center justify-center gap-2"
                   onClick={async () => {
                     if (!expenseName || !selectedList || !cost /**!quantity */  || !payer) {
                       alert("Please fill all required fields.")
@@ -289,9 +266,7 @@ export default function AddExpense() {
                 </button>
               </div>
             </div>
-          </div>
         </div>
-      </div>
     </div>
   )
 }

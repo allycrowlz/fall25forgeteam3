@@ -2,7 +2,7 @@ import logfire
 from fastapi import APIRouter, FastAPI, HTTPException, status, Header, Depends
 from database.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
 from database.connection import get_connection
-from app.security import get_password_hash, create_access_token, verify_password, decode_token
+from security import get_password_hash, create_access_token, verify_password, decode_token
 
 router = APIRouter()
 

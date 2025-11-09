@@ -180,7 +180,7 @@ async def get_group(id: int, profile_id: int):
         if not row:
             raise HTTPException(status_code=404, detail="Group not found or access denied")
         
-        return dict(row)
+        return Group(**dict(row))
     finally:
         cur.close()
         conn.close()
