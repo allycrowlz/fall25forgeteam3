@@ -11,6 +11,17 @@ type Expense = {
     bought_by_id: number;
 }
 
+type CompleteExpense = {
+    item_name: String;
+    item_id: number;
+    list_id: number;
+    item_total_cost: number;
+    item_quantity: number;
+    notes: String | undefined;
+    bought_by_id: number;
+    date_bought: Date;
+}
+
 /**
  * Represents a group in the Group table.
  */
@@ -92,6 +103,7 @@ export async function getGroupExpenseLists(groupId : number) : Promise<GroupExpe
  * @param quantity the quantity of this expense.
  * @param notes any related notes for the expense.
  * @param payer the id of the user who paid for the expense.
+ * @returns the item_id of the newly created item.
  */
 export async function postExpense(expenseName: String,
                                     listId: number,
@@ -115,12 +127,12 @@ export async function postExpense(expenseName: String,
       },
       body: JSON.stringify(expense),
     });
-    console.log(response.status);
+    if(!response.ok) throw new Error("Failed to post expense");
+    const completeExpense : CompleteExpense = await response.json();
+    return completeExpense.item_id;
 }
 
-/**
- * 
- */
-export async function postSplit() {
 
+export async function postSplit(itemId : number, profileId : number) {
+  
 }
