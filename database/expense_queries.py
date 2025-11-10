@@ -139,6 +139,6 @@ def create_split (split : ExpenseSplit):
 
 #print(records)
 print(get_group_lists(0))
-print(get_all_expenses_in_list(2))
+print(get_all_expenses_in_list(55))
 # print(get_item_in_list(2, 1))
 

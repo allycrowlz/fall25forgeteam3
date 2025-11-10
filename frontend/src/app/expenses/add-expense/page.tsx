@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { getGroupExpenseLists, getGroupMembers, getUserGroups, postExpense, GroupInfo, GroupExpenseList, UserInfo, postSplits } from '@/app/services/expenseService';
 
 export interface UserSplitAmountHash {
-  [key : number] : number;
+  [key: number]: number;
 }
 
 export default function AddExpense() {
@@ -33,18 +33,18 @@ export default function AddExpense() {
 
   const addOrUpdateSplit = (id: number, amount: number) => {
     setUserSplitHashMap(prev => ({
-          ...prev,
-          [id]: amount,
-        }));
-    };
+      ...prev,
+      [id]: amount,
+    }));
+  };
 
-  const getSplit = (userId : number) => {
+  const getSplit = (userId: number) => {
     return userSplitHashMap[userId];
   };
 
-  const deleteSplit = (userId : number) => {
+  const deleteSplit = (userId: number) => {
     setUserSplitHashMap(prev => {
-      const newMap : UserSplitAmountHash = { ...prev };
+      const newMap: UserSplitAmountHash = { ...prev };
       delete newMap[userId];
       return newMap;
     })
@@ -193,6 +193,14 @@ export default function AddExpense() {
               </div>
             )}
           </div>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-400 transition cursor-pointer">
+            <div className="text-center">
+              <div className="text-5xl mb-3">📤</div>
+              <div className="text-gray-700 font-medium mb-1">Upload Receipt</div>
+              <div className="text-sm text-gray-500">Click or drag file to upload</div>
+            </div>
+          </div>
+
 
           <div className="space-y-4 border-t pt-6">
 
@@ -230,12 +238,12 @@ export default function AddExpense() {
                     const selectedIds = e?.map(member => member.value) || [];
                     setSplitMembers(selectedIds)
                     console.log(selectedIds);
-                    const idsToRemove : number[] = Object.keys(userSplitHashMap)
-                    .map(key => parseInt(key)).filter(key => !selectedIds.includes(key));
+                    const idsToRemove: number[] = Object.keys(userSplitHashMap)
+                      .map(key => parseInt(key)).filter(key => !selectedIds.includes(key));
                     idsToRemove.forEach(id => deleteSplit(id));
                     selectedIds.forEach(id => addOrUpdateSplit(id, cost / (selectedIds.length + 1)));
                   }}
-                  
+
                 />
               </div>
 
@@ -244,13 +252,13 @@ export default function AddExpense() {
                 <button
                   type="button"
                   onClick={() => {
-                    if(!customSplit) {
+                    if (!customSplit) {
                       setSplitAmounts({});
                     } else {
                       setSplitAmounts({});
                     }
                     setCustomSplit(!customSplit);
-                    
+
                   }
                   }
                   className={`w-14 h-7 rounded-full transition relative ${customSplit ? 'bg-blue-600' : 'bg-gray-300'
