@@ -1,3 +1,4 @@
+import { UserSplitAmountHash } from "../expenses/add-expense/page";
 
 /**
  * Represents an expense in Expense table.
@@ -11,6 +12,9 @@ type Expense = {
     bought_by_id: number;
 }
 
+/**
+ * Represents a complete expense in the database, including item id and creation date.
+ */
 type CompleteExpense = {
     item_name: String;
     item_id: number;
@@ -20,6 +24,12 @@ type CompleteExpense = {
     notes: String | undefined;
     bought_by_id: number;
     date_bought: Date;
+}
+
+type Split = {
+  item_id: number;
+  amount_owed: number;
+  profile_id: number;
 }
 
 /**
@@ -110,7 +120,7 @@ export async function postExpense(expenseName: String,
                                     cost: number,
                                     quantity: number,
                                     notes: String | undefined,
-                                    payer: number) {
+                                    payer: number) : Promise<number> {
 
        const expense: Expense = {
         item_name: expenseName,
@@ -133,6 +143,20 @@ export async function postExpense(expenseName: String,
 }
 
 
-export async function postSplit(itemId : number, profileId : number) {
-  
+export async function postSplits(itemId : number, amountSplits : UserSplitAmountHash) {
+  for (const [id, amount] of Object.entries(amountSplits)) {
+    console.log("Key: " + id + ", Value: " + amount);
+    const split : Split = {
+      item_id: itemId,
+      amount_owed: amount,
+      profile_id: parseInt(id)
+    };
+    const response = await fetch("http://127.0.0.1:8000/api/expenseslists/expenses/splits", {
+     method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(split),
+    });
+  }
 }

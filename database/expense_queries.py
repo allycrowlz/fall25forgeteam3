@@ -1,6 +1,6 @@
 from datetime import datetime
 import psycopg2
-from .pydanticmodels import ExpenseItem, ExpenseItemCreate, ExpenseList
+from .pydanticmodels import ExpenseItem, ExpenseItemCreate, ExpenseList, ExpenseSplit
 from database import connection
 
 
@@ -105,9 +105,36 @@ def create_expense(expense: ExpenseItemCreate):
         
     except Exception as e:
         cur.close()
-        conn.close()
         conn.rollback()
+        conn.close()
         raise Exception({e})
+
+def create_split (split : ExpenseSplit):
+
+    conn = connection.get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+        INSERT INTO expense_split
+        (item_id,amount_owed, profile_id)
+        VALUES (%s, %s, %s)
+        RETURNING split_id
+        """, (split.item_id, 
+              split.amount_owed,
+              split.profile_id))
+        item_id = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("SUCCESS")
+        return item_id
+    except Exception as e: 
+        cur.close()
+        conn.rollback()
+        conn.close()
+        raise Exception(e)
+
 
 
 #print(records)

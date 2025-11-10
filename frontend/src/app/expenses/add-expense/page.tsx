@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import Select from 'react-select';
 import { useRouter } from 'next/navigation';
-import Navbar from '../navbar';
-import { getGroupExpenseLists, getGroupMembers, getUserGroups, postExpense, GroupInfo, GroupExpenseList, UserInfo } from '@/app/services/expenseService';
-import { Underdog } from 'next/font/google';
+import { getGroupExpenseLists, getGroupMembers, getUserGroups, postExpense, GroupInfo, GroupExpenseList, UserInfo, postSplits } from '@/app/services/expenseService';
 
+export interface UserSplitAmountHash {
+  [key : number] : number;
+}
 
 export default function AddExpense() {
   const router = useRouter();
@@ -25,7 +26,29 @@ export default function AddExpense() {
   const [cost, setCost] = useState<number>(0);
   const [quantity, setQuantity] = useState<number>(1);
   const [description, setDescription] = useState<String>();
-  const [splitMembers, setSplitMembers] = useState<UserInfo[]>([]);
+
+  const [splitMembers, setSplitMembers] = useState<number[]>([]);
+  const [splitAmounts, setSplitAmounts] = useState<UserSplitAmountHash>({});
+  const [userSplitHashMap, setUserSplitHashMap] = useState<UserSplitAmountHash>({});
+
+  const addOrUpdateSplit = (id: number, amount: number) => {
+    setUserSplitHashMap(prev => ({
+          ...prev,
+          [id]: amount,
+        }));
+    };
+
+  const getSplit = (userId : number) => {
+    return userSplitHashMap[userId];
+  };
+
+  const deleteSplit = (userId : number) => {
+    setUserSplitHashMap(prev => {
+      const newMap : UserSplitAmountHash = { ...prev };
+      delete newMap[userId];
+      return newMap;
+    })
+  };
 
   useEffect(() => {
     async function loadGroups() {
@@ -59,24 +82,24 @@ export default function AddExpense() {
               instanceId={"group-select"}
               options={
                 groups.map(group => ({
-                value: group.group_id,
-                label: group.group_name
-              }))}
+                  value: group.group_id,
+                  label: group.group_name
+                }))}
               isLoading={loading}
-              placeholder= "Select group..."
+              placeholder="Select group..."
               onChange={async (e) => {
 
-              const newGroupId = e?.value || undefined;
-              setSelectedGroup(newGroupId);
+                const newGroupId = e?.value || undefined;
+                setSelectedGroup(newGroupId);
 
-              if (newGroupId != undefined) { 
-              const members: UserInfo[] = await getGroupMembers(newGroupId);
-              setGroupMembers(members);
+                if (newGroupId != undefined) {
+                  const members: UserInfo[] = await getGroupMembers(newGroupId);
+                  setGroupMembers(members);
 
-              const lists: GroupExpenseList[] = await getGroupExpenseLists(newGroupId);
-              setGroupExpenseLists(lists);
-              }
-            }}
+                  const lists: GroupExpenseList[] = await getGroupExpenseLists(newGroupId);
+                  setGroupExpenseLists(lists);
+                }
+              }}
             />
           </div>
           <div>
@@ -84,13 +107,14 @@ export default function AddExpense() {
               List *
             </label>
             <Select
-            className="w-full text-gray-700"
-            instanceId={"list-select"}
-            options= {groupExpenseLists.map(list => ({
-            label: list.list_name,
-            value: list.list_id
-            }))}
-            onChange={(e) => setSelectedList(e?.value || undefined)}
+              className="w-full text-gray-700"
+              instanceId={"list-select"}
+              placeholder={"Select expense list..."}
+              options={groupExpenseLists.map(list => ({
+                label: list.list_name,
+                value: list.list_id
+              }))}
+              onChange={(e) => setSelectedList(e?.value || undefined)}
             />
           </div>
           <div>
@@ -177,15 +201,15 @@ export default function AddExpense() {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Who Paid? *
                 </label>
-                <Select 
-                className="w-full text-gray-700 rounded-lg"
-                instanceId={"payer-select"}
-                options={groupMembers.map(member => ({
-                  label: member.profile_name,
-                  value: member.profile_id
-                }))}
-                onChange={e => setPayer(e?.value || undefined)}
-                placeholder={"Select payer"}
+                <Select
+                  className="w-full text-gray-700 rounded-lg"
+                  instanceId={"payer-select"}
+                  options={groupMembers.map(member => ({
+                    label: member.profile_name,
+                    value: member.profile_id
+                  }))}
+                  onChange={e => setPayer(e?.value || undefined)}
+                  placeholder={"Select payer"}
                 />
               </div>
 
@@ -193,17 +217,25 @@ export default function AddExpense() {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Split With
                 </label>
-                <Select 
-                className="w-full text-gray-700 rounded-lg"
-                instanceId="split-select"
-                placeholder={"Select who to split with"}
-                isMulti={true}
-                options={groupMembers.filter((member) => member.profile_id != payer).map((member) => ({
-                  label: member.profile_name,
-                  value: member.profile_id
-                }))}
-                onChange={e => setSplitMembers(groupMembers
-                  .filter(user => ((e?.map(member => member.value) || []).includes(user.profile_id))))}
+                <Select
+                  className="w-full text-gray-700 rounded-lg"
+                  instanceId="split-select"
+                  placeholder={"Select who to split with"}
+                  isMulti={true}
+                  options={groupMembers.filter((member) => member.profile_id != payer).map((member) => ({
+                    label: member.profile_name,
+                    value: member.profile_id
+                  }))}
+                  onChange={e => {
+                    const selectedIds = e?.map(member => member.value) || [];
+                    setSplitMembers(selectedIds)
+                    console.log(selectedIds);
+                    const idsToRemove : number[] = Object.keys(userSplitHashMap)
+                    .map(key => parseInt(key)).filter(key => !selectedIds.includes(key));
+                    idsToRemove.forEach(id => deleteSplit(id));
+                    selectedIds.forEach(id => addOrUpdateSplit(id, cost / (selectedIds.length + 1)));
+                  }}
+                  
                 />
               </div>
 
@@ -211,7 +243,16 @@ export default function AddExpense() {
                 <span className="text-gray-700 font-medium">Custom Split?</span>
                 <button
                   type="button"
-                  onClick={() => setCustomSplit(!customSplit)}
+                  onClick={() => {
+                    if(!customSplit) {
+                      setSplitAmounts({});
+                    } else {
+                      setSplitAmounts({});
+                    }
+                    setCustomSplit(!customSplit);
+                    
+                  }
+                  }
                   className={`w-14 h-7 rounded-full transition relative ${customSplit ? 'bg-blue-600' : 'bg-gray-300'
                     }`}
                 >
@@ -223,17 +264,21 @@ export default function AddExpense() {
               {customSplit && (
                 <div className="space-y-2 pl-4 border-l-4 border-blue-500">
                   <div className="text-sm font-semibold text-gray-700 mb-2">Split Amounts:</div>
-                  {splitMembers.filter((member) => member.profile_id != payer).map((member) => (
-                    <div key={member.profile_id} className="flex items-center gap-3">
-                      <span className="text-sm text-gray-700 w-20">{member.profile_name}</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="flex-1 border border-gray-300 rounded p-2 text-sm bg-white text-gray-700"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  ))}
+                  {groupMembers.filter((member) => member.profile_id != payer
+                    && splitMembers.includes(member.profile_id)).map((member) => (
+                      <div key={member.profile_id} className="flex items-center gap-3">
+                        <span className="text-sm text-gray-700 w-20">{member.profile_name}</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="flex-1 border border-gray-300 rounded p-2 text-sm bg-white text-gray-700"
+                          placeholder="0.00"
+                          defaultValue={cost / (splitMembers.length + 1)}
+                          key={member.profile_id}
+                          onChange={e => addOrUpdateSplit(member.profile_id, parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
@@ -257,8 +302,19 @@ export default function AddExpense() {
                   console.log("quantity:", 1);
                   console.log("payer:", payer);
                 } else {
-                  postExpense(expenseName!, selectedList!, cost, 1/**quantity */, description, payer);
-                  router.push('/expenses');
+                  // router.push('/expenses');
+                  const newExpenseId: number = await postExpense(expenseName!, selectedList!, cost, 1/**quantity */, description, payer);
+                  if (splitMembers.length > 0) {
+                    if (customSplit) {
+                      postSplits(newExpenseId, userSplitHashMap);
+                    } else {
+                      const splitAmount = cost / (splitMembers.length + 1);
+                      for (var i = 0; i < splitMembers.length; i++) {
+                        addOrUpdateSplit(splitMembers[i], splitAmount);
+                      }
+                      postSplits(newExpenseId, userSplitHashMap);
+                    }
+                  }
                 }
               }}
             >

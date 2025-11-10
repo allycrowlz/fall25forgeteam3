@@ -26,6 +26,13 @@ async def create_expense(expense: ExpenseItemCreate):
     """
     return expense_queries.create_expense(expense)
 
+@router.post("/api/expenseslists/expenses/splits", status_code=201)
+async def create_expense(split: ExpenseSplitCreate):
+    """
+    Creates a new expense using the inputted data parsed into a PydanticCreateModel
+    """
+    return expense_queries.create_split(split)
+
 
 @router.put("/api/expenses/{id}")
 async def update_or_create_expense(expense: ExpenseItemCreate, id: int):
