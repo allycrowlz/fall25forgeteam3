@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '../navbar'
+import ProtectedRoute from '@/app/components/ProtectedRoute'
 
-export default function BillSplitting() {
+function BillSplittingContent() {
   const [selectedGroup, setSelectedGroup] = useState('Group 1')
   const router = useRouter()
 
@@ -160,4 +161,12 @@ export default function BillSplitting() {
       </div>
     </div>
   )
+}
+
+export default function BillSplitting() {
+  return (
+    <ProtectedRoute>
+      <BillSplittingContent />
+    </ProtectedRoute>
+  );
 }

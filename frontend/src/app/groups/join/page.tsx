@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { joinGroup } from '../../services/groupService';
+import ProtectedRoute from '../../components/ProtectedRoute';
 
-export default function JoinGroupPage() {
+function JoinGroupContent() {
   const router = useRouter();
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -113,5 +114,13 @@ export default function JoinGroupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function JoinGroupPage() {
+  return (
+    <ProtectedRoute>
+      <JoinGroupContent />
+    </ProtectedRoute>
   );
 }

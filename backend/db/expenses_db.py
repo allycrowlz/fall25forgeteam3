@@ -1,4 +1,4 @@
-from connection import get_connection
+from backend.db.connection import get_connection
 
 EXPENSE_TABLES = """
 DROP TABLE IF EXISTS expense_split CASCADE;

@@ -22,9 +22,9 @@ export default function SignUpPage() {
     // Password validation
     if (!payload.password || typeof payload.password !== 'string') {
       errors.password = 'Password is required';
-    } else if (payload.password.length < 6) {
+    } else if ((payload.password as string).length < 6) {
       errors.password = 'Password must be at least 6 characters';
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(payload.password)) {
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(payload.password as string)) {
       errors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
     }
 
@@ -36,7 +36,7 @@ export default function SignUpPage() {
     }
 
     // Name validation
-    if (!payload.profile_name || typeof payload.profile_name !== 'string' || payload.profile_name.trim().length === 0) {
+    if (!payload.profile_name || typeof payload.profile_name !== 'string' || (payload.profile_name as string).trim().length === 0) {
       errors.profile_name = 'Name is required';
     }
 
@@ -53,32 +53,27 @@ export default function SignUpPage() {
     const form = new FormData(e.currentTarget);
     const payload = Object.fromEntries(form.entries());
 
-    // Validate form
     if (!validateForm(payload)) {
       setLoading(false);
       return;
     }
 
     try {
-      // Use auth service for registration
       const response = await register({
         profile_name: payload.profile_name as string,
         email: payload.email as string,
         password: payload.password as string,
         picture: payload.picture ? (payload.picture as string) : null,
         birthday: payload.birthday ? (payload.birthday as string) : null,
+        phone: payload.phone ? (payload.phone as string) : null, // optional
       });
 
-      // Store token and auto-login
       setToken(response.access_token);
-
-      // Redirect to groups
-      window.location.href = "/groups";
+      window.location.href = "/profile";
     } catch (err: any) {
-      // Handle different error types
-      if (err.message.includes('fetch') || err.message.includes('network')) {
+      if (err.message?.includes('fetch') || err.message?.includes('network')) {
         setError("Network error. Please check your connection and try again.");
-      } else if (err.message.includes('already registered') || err.message.includes('already exists')) {
+      } else if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
         setError("This email is already registered. Please use a different email or login.");
       } else {
         setError(err.message || "Registration failed. Please try again.");
@@ -103,16 +98,12 @@ export default function SignUpPage() {
         {/* Card */}
         <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm p-6">
           <h1 className="text-xl font-semibold text-zinc-900">Get Started Now</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Enter your information to create your account.
-          </p>
+          <p className="mt-1 text-sm text-zinc-500">Enter your information to create your account.</p>
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             {/* Name */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-zinc-700">
-                Name
-              </label>
+              <label htmlFor="name" className="block text-sm font-medium text-zinc-700">Name</label>
               <input
                 id="name"
                 name="profile_name"
@@ -130,9 +121,7 @@ export default function SignUpPage() {
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-zinc-700">
-                Email address
-              </label>
+              <label htmlFor="email" className="block text-sm font-medium text-zinc-700">Email address</label>
               <input
                 id="email"
                 name="email"
@@ -152,9 +141,7 @@ export default function SignUpPage() {
             {/* Phone (optional) */}
             <div>
               <div className="flex items-center justify-between">
-                <label htmlFor="phone" className="block text-sm font-medium text-zinc-700">
-                  Phone number
-                </label>
+                <label htmlFor="phone" className="block text-sm font-medium text-zinc-700">Phone number</label>
                 <span className="text-xs text-zinc-400">optional</span>
               </div>
               <input
@@ -163,16 +150,14 @@ export default function SignUpPage() {
                 type="tel"
                 inputMode="tel"
                 placeholder="(555) 123-4567"
-                pattern="[+()\-\s\d]{7,}"
+                pattern="[+()\\-\\s\\d]{7,}"
                 className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-zinc-700">
-                Password
-              </label>
+              <label htmlFor="password" className="block text-sm font-medium text-zinc-700">Password</label>
               <input
                 id="password"
                 name="password"
@@ -186,16 +171,12 @@ export default function SignUpPage() {
               {validationErrors.password && (
                 <p className="mt-1 text-xs text-red-600">{validationErrors.password}</p>
               )}
-              <p className="mt-1 text-xs text-zinc-500">
-                Must contain uppercase, lowercase, and number
-              </p>
+              <p className="mt-1 text-xs text-zinc-500">Must contain uppercase, lowercase, and number</p>
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-zinc-700">
-                Confirm Password
-              </label>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-zinc-700">Confirm Password</label>
               <input
                 id="confirmPassword"
                 name="confirmPassword"
@@ -213,9 +194,7 @@ export default function SignUpPage() {
 
             {/* Birthday (optional) */}
             <div>
-              <label htmlFor="birthday" className="block text-sm font-medium text-zinc-700">
-                Birthday
-              </label>
+              <label htmlFor="birthday" className="block text-sm font-medium text-zinc-700">Birthday</label>
               <input
                 id="birthday"
                 name="birthday"
@@ -226,9 +205,7 @@ export default function SignUpPage() {
 
             {/* Profile Picture URL (optional) */}
             <div>
-              <label htmlFor="picture" className="block text-sm font-medium text-zinc-700">
-                Profile Picture URL
-              </label>
+              <label htmlFor="picture" className="block text-sm font-medium text-zinc-700">Profile Picture URL</label>
               <input
                 id="picture"
                 name="picture"

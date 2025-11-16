@@ -2,8 +2,9 @@
 
 import { logout } from '../services/authService';
 import { useRouter } from 'next/navigation';
+import ProtectedRoute from '../components/ProtectedRoute';
 
-export default function SettingsPage() {
+function SettingsContent() {
   const router = useRouter();
 
   async function handleLogout() {
@@ -17,7 +18,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 text-black">
+    <div className="min-h-screen text-black" style={{ backgroundColor: "#E8F3E9" }}>
       <main className="max-w-2xl mx-auto px-8 py-12">
         <div className="bg-white rounded-3xl p-8 shadow-xl border-2 border-gray-300">
           <h1 className="text-4xl font-bold mb-4">Settings</h1>
@@ -56,5 +57,13 @@ export default function SettingsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <ProtectedRoute>
+      <SettingsContent />
+    </ProtectedRoute>
   );
 }

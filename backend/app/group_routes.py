@@ -6,14 +6,13 @@ import string
 import random
 from psycopg2.extras import RealDictCursor
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-from database import connection
-from database.pydanticmodels import ExpenseItemCreate, Group
-from database import expense_queries
-
+from backend.db.expense_queries import (
+    get_group_lists,
+    get_all_expenses_in_list,
+    create_expense,
+    delete_expense,
+    get_item_in_list,
+)
 
 router = APIRouter()
 
