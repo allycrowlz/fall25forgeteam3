@@ -1,27 +1,34 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from backend.app import auth_routes, expenses, group_routes, shopping_list_routes, chores_routes, events
 
-from . import expenses, group_routes, main
 
+app = FastAPI(title="HomeBase API")
 
-# RUN: fastapi dev backend/app/api_connection.py for development server
-
-app = FastAPI()
-
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
+# Include all routers with proper prefixes
+app.include_router(auth_routes.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(expenses.router, prefix="/api/expenses", tags=["Expenses"])
+app.include_router(group_routes.router, prefix="/api/groups", tags=["Groups"])
+app.include_router(shopping_list_routes.router, tags=["shopping-lists"])
+app.include_router(chores_routes.router, prefix="/api", tags=["Chores"]) 
+app.include_router(events.router, prefix="/api", tags=["Events"])
 
-app.include_router(group_routes.router)
-app.include_router(expenses.router)
-app.include_router(main.router)
-
+@app.get("/")
+def root():
+    return {
+        "message": "HomeBase API",
+        "version": "1.0",
+        "documentation": "/docs"
+    }
 
 
 

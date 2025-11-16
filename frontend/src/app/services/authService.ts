@@ -1,21 +1,12 @@
 /**
  * Centralized authentication service for token management
+ * Uses same-origin /api/... URLs that are proxied by next.config.js rewrites
  */
 
 const TOKEN_KEY = 'access_token';
-// Automatically detect backend URL based on current hostname
-const getApiBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-  if (typeof window !== 'undefined') {
-    // Use the same hostname as the frontend, but port 8000
-    const hostname = window.location.hostname;
-    return `http://${hostname}:8000`;
-  }
-  return 'http://localhost:8000';
-};
-const API_BASE_URL = getApiBaseUrl();
+
+// Build same-origin URLs (rewritten to the backend by Next)
+const api = (p: string) => `/api${p}`;
 
 export interface LoginCredentials {
   email: string;
@@ -28,6 +19,7 @@ export interface RegisterData {
   password: string;
   picture?: string | null;
   birthday?: string | null;
+  phone?: string | null; // optional; your form collects it
 }
 
 export interface AuthResponse {
@@ -35,234 +27,192 @@ export interface AuthResponse {
   token_type: string;
 }
 
-/**
- * Get the stored access token
- */
+export interface User {
+  id?: string;
+  profile_id?: string;
+  email: string;
+  profile_name: string;
+  picture?: string | null;
+  birthday?: string | null; // ISO date
+  phone?: string | null;
+  role?: string | null;
+  groups?: string[];
+  created_at?: string; // ISO
+}
+
+/* ---------------- Token helpers ---------------- */
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem(TOKEN_KEY);
 }
 
-/**
- * Store the access token
- */
 export function setToken(token: string): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(TOKEN_KEY, token);
 }
 
-/**
- * Remove the access token (logout)
- */
 export function removeToken(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(TOKEN_KEY);
 }
 
-/**
- * Check if user is authenticated
- */
 export function isAuthenticated(): boolean {
   return getToken() !== null;
 }
 
-/**
- * Get the Authorization header value
- */
 export function getAuthHeader(): string | null {
   const token = getToken();
   return token ? `Bearer ${token}` : null;
 }
 
-/**
- * Check if token is expired (basic check - just checks if token exists)
- * For a more robust check, decode the JWT and check exp claim
- */
+/** Basic exp check for JWTs */
 export function isTokenExpired(): boolean {
   const token = getToken();
   if (!token) return true;
 
   try {
-    // Decode JWT without verification (just to check expiration)
     const payload = JSON.parse(atob(token.split('.')[1]));
-    const exp = payload.exp * 1000; // Convert to milliseconds
+    const exp = payload.exp * 1000;
     return Date.now() >= exp;
   } catch {
-    return true; // If we can't decode, consider it expired
+    return true;
   }
 }
 
-/**
- * Login user
- */
-export async function login(credentials: LoginCredentials): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+/* ---------------- Auth endpoints ---------------- */
+export async function login(credentials: { email: string; password: string }) {
+  const res = await fetch(api('/auth/login'), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(credentials),
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    let errorMessage = 'Login failed';
-    
-    try {
-      const errorData = JSON.parse(errorText);
-      errorMessage = errorData.detail || errorData.message || errorMessage;
-    } catch {
-      errorMessage = errorText || errorMessage;
-    }
-
-    throw new Error(errorMessage);
-  }
-
-  const data = await response.json();
-  return data;
+  if (!res.ok) throw new Error(await res.text() || 'Login failed');
+  return res.json();
 }
 
-/**
- * Register new user
- */
 export async function register(userData: RegisterData): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+  const response = await fetch(api('/auth/register'), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(userData),
   });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    const errorMessage = errorData.detail || errorData.message || 'Registration failed';
-    throw new Error(errorMessage);
-  }
-
-  const data = await response.json();
-  return data;
+  if (!response.ok) throw new Error(await extractErr(response, 'Registration failed'));
+  return response.json();
 }
 
-/**
- * Refresh access token
- */
 export async function refreshToken(): Promise<AuthResponse> {
   const token = getToken();
-  if (!token) {
-    throw new Error('No token to refresh');
-  }
+  if (!token) throw new Error('No token to refresh');
 
-  const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+  const response = await fetch(api('/auth/refresh'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
   if (!response.ok) {
-    // If refresh fails, clear token and throw error
     removeToken();
-    const errorText = await response.text();
-    let errorMessage = 'Token refresh failed';
-    
-    try {
-      const errorData = JSON.parse(errorText);
-      errorMessage = errorData.detail || errorData.message || errorMessage;
-    } catch {
-      errorMessage = errorText || errorMessage;
-    }
-
-    throw new Error(errorMessage);
+    throw new Error(await extractErr(response, 'Token refresh failed'));
   }
-
-  const data = await response.json();
-  return data;
+  return response.json();
 }
 
-/**
- * Logout user
- */
 export async function logout(): Promise<void> {
   const token = getToken();
-  
-  // Try to call logout endpoint (don't fail if it errors)
   if (token) {
     try {
-      await fetch(`${API_BASE_URL}/api/auth/logout`, {
+      await fetch(api('/auth/logout'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
     } catch {
-      // Ignore errors - still clear local token
+      // ignore
     }
   }
-
-  // Always clear local token
   removeToken();
 }
 
-/**
- * Make an authenticated fetch request with automatic token refresh
- */
+/* -------- Auto-refreshing authenticated fetch -------- */
 export async function authenticatedFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
   let token = getToken();
 
-  // Check if token is expired and refresh if needed
+  // Refresh if expired
   if (token && isTokenExpired()) {
     try {
       const refreshed = await refreshToken();
       token = refreshed.access_token;
       setToken(token);
-    } catch (error) {
-      // Refresh failed, redirect to login
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+    } catch {
+      if (typeof window !== 'undefined') window.location.href = '/login';
       throw new Error('Session expired. Please login again.');
     }
   }
 
-  // Add Authorization header
   const headers = new Headers(options.headers);
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
+  if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  let res = await fetch(url, { ...options, headers });
 
-  // If 401, try to refresh token once
-  if (response.status === 401 && token) {
+  if (res.status === 401 && token) {
+    // Try one refresh then retry
     try {
       const refreshed = await refreshToken();
       token = refreshed.access_token;
       setToken(token);
-
-      // Retry the original request
       headers.set('Authorization', `Bearer ${token}`);
-      return fetch(url, {
-        ...options,
-        headers,
-      });
+      res = await fetch(url, { ...options, headers });
     } catch {
-      // Refresh failed, redirect to login
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+      if (typeof window !== 'undefined') window.location.href = '/login';
       throw new Error('Session expired. Please login again.');
     }
   }
 
-  return response;
+  return res;
 }
 
+/* ---------------- Current user ---------------- */
+export async function getCurrentUser(): Promise<User> {
+  const res = await authenticatedFetch(api('/auth/me'), { method: 'GET' });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || 'Failed to load user');
+  }
+  return res.json();
+}
+
+/* ---------------- helpers ---------------- */
+async function extractErr(res: Response, fallback: string) {
+  try {
+    const text = await res.text();
+    try {
+      const json = JSON.parse(text);
+      return json.detail || json.message || fallback;
+    } catch {
+      return text || fallback;
+    }
+  } catch {
+    return fallback;
+  }
+}
+
+/* edit profile */
+export async function updateProfile(updates: Partial<User>): Promise<User> {
+  const res = await authenticatedFetch(api('/auth/profile'), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || 'Failed to update profile');
+  }
+  return res.json();
+}
