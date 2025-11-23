@@ -1,29 +1,16 @@
-from fastapi import APIRouter, FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional
+from fastapi import APIRouter, HTTPException
 import string
 import random
 from psycopg2.extras import RealDictCursor
-
-from backend.db.expense_queries import (
-    get_group_lists,
-    get_all_expenses_in_list,
-    create_expense,
-    delete_expense,
-    get_item_in_list,
+from backend.db.connection import get_connection
+from backend.db.pydanticmodels import (
+    GroupCreate, 
+    GroupUpdate, 
+    GroupMember, 
+    JoinGroup
 )
 
 router = APIRouter()
-
-
-class GroupMember(BaseModel):
-    profile_id: int
-    profile_name: str
-    email: str
-    picture: Optional[str]
-    role: str
-    is_creator: bool
 
 
 # Invite code generation utility
@@ -32,41 +19,28 @@ def generate_invite_code(length=8):
     characters = string.ascii_uppercase + string.digits
     return ''.join(random.choices(characters, k=length))
 
-# Pydantic models
-class GroupCreate(BaseModel):
-    group_name: str
-    group_photo: Optional[str] = None
-    profile_id: int
 
-class GroupUpdate(BaseModel):
-    group_name: str
-    group_photo: Optional[str] = None
-
-class JoinGroup(BaseModel):
-    join_code: str
-    profile_id: int
-
-# POST /api/groups - Create a new group
-@router.post("/api/groups", status_code=201)
+# POST /groups - Create a new group
+@router.post("/groups", status_code=201)
 async def create_group(group: GroupCreate):
-
-    conn = connection.get_connection()
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
         join_code = generate_invite_code()
     
         cur.execute("""
-            INSERT INTO "group" (group_name, date_created, group_photo, join_code)
+            INSERT INTO "Group" (group_name, date_created, group_photo, join_code)
             VALUES (%s, NOW(), %s, %s)
             RETURNING group_id, group_name, date_created, group_photo, join_code
         """, (group.group_name, group.group_photo, join_code))
         
         row = cur.fetchone()
 
+        # ✅ CHANGE 'creator' to whatever role is allowed (probably 'admin' or 'owner')
         cur.execute("""
             INSERT INTO groupprofile (group_id, profile_id, role)
-            VALUES (%s, %s, 'creator')
+            VALUES (%s, %s, 'admin')
         """, (row['group_id'], group.profile_id))
         
         conn.commit()
@@ -85,17 +59,16 @@ async def create_group(group: GroupCreate):
         cur.close()
         conn.close()
 
-# POST /api/groups/join - Join a group using join code
-@router.post("/api/groups/join")
+# POST /groups/join - Join a group using join code
+@router.post("/groups/join")  # ✅ FIXED
 async def join_group(join_data: JoinGroup):
-
-    conn = connection.get_connection()
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
         cur.execute("""
             SELECT group_id, group_name, group_photo 
-            FROM "group" 
+            FROM "Group" 
             WHERE join_code = %s
         """, (join_data.join_code,))
         
@@ -115,7 +88,7 @@ async def join_group(join_data: JoinGroup):
             raise HTTPException(status_code=400, detail="Already a member of this group")
   
         cur.execute("""
-            INSERT INTO groupprofile_junction (group_id, profile_id, role)
+            INSERT INTO groupprofile (group_id, profile_id, role)
             VALUES (%s, %s, 'member')
         """, (group['group_id'], join_data.profile_id))
         
@@ -134,11 +107,10 @@ async def join_group(join_data: JoinGroup):
         cur.close()
         conn.close()
 
-# GET /api/groups - Get all groups for current user
-@router.get('/api/groups')
+# GET /groups - Get all groups for current user
+@router.get('/groups')  # ✅ FIXED
 async def get_groups(profile_id: int):
-
-    conn = connection.get_connection()
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -153,15 +125,15 @@ async def get_groups(profile_id: int):
         """, (profile_id,))
         
         groupData = cur.fetchall()
-        return [Group(**group) for group in groupData]
+        return groupData
     finally:
         cur.close()
         conn.close()
 
-# GET /api/groups/:id - Get a specific group
-@router.get("/api/groups/{id}")
+# GET /groups/:id - Get a specific group
+@router.get("/groups/{id}")  # ✅ FIXED
 async def get_group(id: int, profile_id: int):
-    conn = connection.get_connection()
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -169,7 +141,7 @@ async def get_group(id: int, profile_id: int):
             SELECT g.group_id, g.group_name, g.date_created, g.group_photo, g.join_code,
                    gp.role,
                    (gp.role = 'creator') as is_creator
-            FROM "group" g
+            FROM "Group" g
             INNER JOIN groupprofile gp ON g.group_id = gp.group_id
             WHERE g.group_id = %s AND gp.profile_id = %s
         """, (id, profile_id))
@@ -184,10 +156,10 @@ async def get_group(id: int, profile_id: int):
         cur.close()
         conn.close()
 
-# GET /api/groups/:id/members - Get all members of a group
-@router.get("/api/groups/{id}/members")
+# GET /groups/:id/members - Get all members of a group
+@router.get("/groups/{id}/members")  # ✅ FIXED
 async def get_group_members(id: int):
-    conn = connection.get_connection()
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -197,9 +169,6 @@ async def get_group_members(id: int):
         """, (id,))
         
         membership = cur.fetchone()
-        
-        # if not membership:
-        #     raise HTTPException(status_code=403, detail="Access denied")
  
         cur.execute("""
             SELECT p.profile_id, p.profile_name, p.email, p.picture,
@@ -211,17 +180,16 @@ async def get_group_members(id: int):
             ORDER BY gp.role DESC, p.profile_name
         """, (id,))
 
-        
         members = cur.fetchall()
-        return [GroupMember(**member) for member in members]
+        return members
     finally:
         cur.close()
         conn.close()
 
-# PUT /api/groups/:id - Update a group
-@router.put("/api/groups/{id}")
+# PUT /groups/:id - Update a group
+@router.put("/groups/{id}")  # ✅ FIXED
 async def update_group(id: int, group: GroupUpdate, profile_id: int):
-    conn = connection.get_connection()
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -236,7 +204,7 @@ async def update_group(id: int, group: GroupUpdate, profile_id: int):
             raise HTTPException(status_code=403, detail="Only group creator can update the group")
   
         cur.execute("""
-            UPDATE "group" 
+            UPDATE "Group" 
             SET group_name = %s, group_photo = %s
             WHERE group_id = %s
             RETURNING group_id, group_name, date_created, group_photo, join_code
@@ -258,10 +226,10 @@ async def update_group(id: int, group: GroupUpdate, profile_id: int):
         cur.close()
         conn.close()
 
-# DELETE /api/groups/:id/members/:user_id - Remove a member from group
-@router.delete("/api/groups/{id}/members/{user_id}")
+# DELETE /groups/:id/members/:user_id - Remove a member from group
+@router.delete("/groups/{id}/members/{user_id}")  # ✅ FIXED
 async def remove_member(id: int, user_id: int, profile_id: int):
-    conn = connection.get_connection()
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
@@ -304,10 +272,10 @@ async def remove_member(id: int, user_id: int, profile_id: int):
         cur.close()
         conn.close()
 
-# POST /api/groups/:id/leave - Leave a group
-@router.post("/api/groups/{id}/leave")
+# POST /groups/:id/leave - Leave a group
+@router.post("/groups/{id}/leave")  # ✅ FIXED
 async def leave_group(id: int, profile_id: int):
-    conn = connection.get_connection()
+    conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:

@@ -50,6 +50,12 @@ export default function Navbar({ colors, showGroupControls = false }: NavbarProp
               >
                 + Add Group
               </Link>
+              <Link
+                href="/groups/create"
+                className="px-6 py-1 bg-white text-black rounded-xl font-semibold hover:bg-gray-200 transition-all shadow-md hover:shadow-lg transform hover:scale-105 whitespace-nowrap"
+              >
+                + Create Group
+              </Link>
             </>
           )}
         </div>

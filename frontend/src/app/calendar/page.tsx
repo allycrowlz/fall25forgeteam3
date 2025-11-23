@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import ProtectedRoute from '../components/ProtectedRoute';
-import { createEvent, getUserEvents, deleteEvent, Event } from '../services/eventService';
+import { createEvent, getUserEvents, deleteEvent, Event } from '../services/eventServices';
 import { getCurrentUser } from '../services/authService';
 
 // Colors
