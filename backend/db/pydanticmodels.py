@@ -103,6 +103,7 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+
 # ============================================
 # GROUP MODELS
 # ============================================
@@ -110,18 +111,39 @@ class UserLogin(BaseModel):
 class GroupBase(BaseModel):
     group_name: str = Field(..., max_length=100)
     group_photo: Optional[str] = Field(None, max_length=255)
-    join_code: str = Field(..., max_length=20)
 
-class GroupCreate(GroupBase):
-    pass
+class GroupCreate(BaseModel):
+    """For creating a new group"""
+    group_name: str = Field(..., max_length=100)
+    group_photo: Optional[str] = Field(None, max_length=255)
+    profile_id: int  # Creator's profile ID
+
+class GroupUpdate(BaseModel):
+    """For updating group details"""
+    group_name: str = Field(..., max_length=100)
+    group_photo: Optional[str] = Field(None, max_length=255)
 
 class Group(GroupBase):
     group_id: int
     date_created: datetime
+    join_code: str
     
     class Config:
         from_attributes = True
 
+class GroupMember(BaseModel):
+    """For group member information"""
+    profile_id: int
+    profile_name: str
+    email: str
+    picture: Optional[str]
+    role: str
+    is_creator: bool
+
+class JoinGroup(BaseModel):
+    """For joining a group"""
+    join_code: str
+    profile_id: int
 
 class GroupProfileBase(BaseModel):
     group_id: int
