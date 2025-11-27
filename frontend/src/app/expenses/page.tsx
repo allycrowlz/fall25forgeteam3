@@ -1,82 +1,70 @@
 'use client'
 
-import { useState } from 'react'
+import Navbar from './navbar'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import ProtectedRoute from '../components/ProtectedRoute'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
-function ExpensesContent() {
+// Mock data - replace with actual API calls
+const mockWeeklyExpenses = [
+  { week: 'Week 1', amount: 90 },
+  { week: 'Week 2', amount: 120 },
+  { week: 'Week 3', amount: 105 },
+  { week: 'Week 4', amount: 135 }
+]
+
+const mockFriends = [
+  { name: 'Friend 1', amount: 45.50 },
+  { name: 'Friend 2', amount: -23.00 },
+  { name: 'Friend 3', amount: 67.25 }
+]
+
+export default function ExpensesDashboard() {
   const [activeTab, setActiveTab] = useState('All')
+  const [totalBalance, setTotalBalance] = useState(0)
+  const [weeklyExpenses, setWeeklyExpenses] = useState(mockWeeklyExpenses)
+  const [friends, setFriends] = useState(mockFriends)
+  const [selectedMonth, setSelectedMonth] = useState('October')
   const router = useRouter()
 
-  const friends = [
-    { name: 'Friend 1', amount: 45.50 },
-    { name: 'Friend 2', amount: -23.00 },
-    { name: 'Friend 3', amount: 67.25 }
-  ]
+  useEffect(() => {
+    // Calculate total balance from friends array
+    const balance = friends.reduce((sum, friend) => sum + friend.amount, 0)
+    setTotalBalance(balance)
+  }, [friends])
+
+  const filteredFriends = friends.filter(friend => {
+    if (activeTab === 'Owes Me') return friend.amount > 0
+    if (activeTab === 'I Owe') return friend.amount < 0
+    return true
+  })
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Navigation Bar */}
-      <nav className="bg-white shadow-md mb-8">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex justify-between items-center py-4">
-            <div className="text-2xl font-bold text-gray-800">💰 ExpenseTracker</div>
-            <div className="flex gap-2">
-              <button
-                className="px-6 py-2 rounded-lg font-medium transition bg-blue-600 text-white"
-              >
-                Dashboard
-              </button>
-              <button
-                onClick={() => router.push('/expenses/bill-splitting')}
-                className="px-6 py-2 rounded-lg font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200"
-              >
-                Bill Splitting
-              </button>
-              <button
-                onClick={() => router.push('/expenses/add-expense')}
-                className="px-6 py-2 rounded-lg font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200"
-              >
-                Add Expense
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen" style={{ backgroundColor: '#E8F3E9' }}>
+      <Navbar />
 
       <div className="px-6 pb-12">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-            <button 
-              onClick={() => router.push('/expenses/add-expense')}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-            >
-              <span className="text-xl">+</span>
-              New Expense
-            </button>
+            <h1 className="text-3xl font-bold" style={{ color: '#4C331D' }}>Dashboard</h1>
           </div>
          
+          {/* Total Balance Card */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-800">Total Balance</h2>
-              <select className="border border-gray-300 rounded px-3 py-1 text-sm">
-                <option>This Month</option>
-                <option>Last Month</option>
-                <option>This Year</option>
-              </select>
+              <h2 className="text-xl font-semibold" style={{ color: '#4C331D' }}>Total Balance</h2>
+              <span className="text-sm" style={{ color: '#4C331D' }}>This Month</span>
             </div>
             
-            <div className="text-4xl font-bold text-gray-900 mb-2">$89.75</div>
-            <div className="flex items-center gap-2 text-green-600">
-              <span className="text-lg">↗</span>
-              <span className="text-sm">+12.5% from last month</span>
+            <div className={`text-4xl font-bold mb-2`} style={{ color: totalBalance >= 0 ? '#407947' : '#c96b6b' }}>
+              {totalBalance >= 0 ? '+' : '-'}${Math.abs(totalBalance).toFixed(2)}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-6">
+            {/* Friends & Balances */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Friends & Balances</h2>
+              <h2 className="text-xl font-semibold mb-4" style={{ color: '#4C331D' }}>Friends & Balances</h2>
               <div className="flex gap-2 mb-4">
                 {['All', 'Owes Me', 'I Owe'].map((tab) => (
                   <button
@@ -87,85 +75,65 @@ function ExpensesContent() {
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
+                    style={activeTab === tab ? { backgroundColor: '#407947' } : {}}
                   >
                     {tab}
                   </button>
                 ))}
               </div>
-              {friends.map((friend, idx) => (
-                <div key={idx} className="flex justify-between items-center py-3 border-b last:border-b-0">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-semibold">
-                      {friend.name.charAt(0)}
+              {filteredFriends.length > 0 ? (
+                filteredFriends.map((friend, idx) => (
+                  <div key={idx} className="flex justify-between items-center py-3 border-b last:border-b-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold" style={{ backgroundColor: '#4C331D' }}>
+                        {friend.name.charAt(0)}
+                      </div>
+                      <span className="font-medium" style={{ color: '#4C331D' }}>{friend.name}</span>
                     </div>
-                    <span className="text-gray-800 font-medium">{friend.name}</span>
+                    <span className="font-semibold" style={{ color: friend.amount >= 0 ? '#407947' : '#c96b6b' }}>
+                      {friend.amount >= 0 ? '+' : '-'}${Math.abs(friend.amount).toFixed(2)}
+                    </span>
                   </div>
-                  <span className={`font-semibold ${friend.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {friend.amount >= 0 ? '+' : '-'}${Math.abs(friend.amount).toFixed(2)}
-                  </span>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500"style={{ color: '#4C331D' }}>
+                  No friends in this category
                 </div>
-              ))}
+              )}
             </div>
 
-            <div className="space-y-4">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Quick Actions</h2>
-                <div className="space-y-2">
-                  <button className="w-full bg-red-50 text-red-700 py-3 rounded-lg hover:bg-red-100 transition flex items-center justify-center gap-2 font-medium">
-                    <span className="text-xl">↓</span>
-                    Settle Up
-                  </button>
-                  <button className="w-full bg-green-50 text-green-700 py-3 rounded-lg hover:bg-green-100 transition flex items-center justify-center gap-2 font-medium">
-                    <span className="text-xl">$</span>
-                    Record Payment
-                  </button>
-                </div>
+            {/* Monthly Expenses Chart */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold" style={{ color: '#4C331D' }}>Monthly Expenses</h2>
               </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">Monthly Expenses</h2>
-                  <select className="text-sm border border-gray-300 rounded px-2 py-1">
-                    <option>October</option>
-                    <option>September</option>
-                    <option>August</option>
-                  </select>
-                </div>
-                <div className="flex justify-around items-end h-40 gap-2">
-                  {[
-                    { height: 60, label: 'Week 1' },
-                    { height: 80, label: 'Week 2' },
-                    { height: 70, label: 'Week 3' },
-                    { height: 90, label: 'Week 4' }
-                  ].map((week, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col justify-end items-center">
-                      <div className="text-xs text-gray-600 mb-1">${(week.height * 1.5).toFixed(0)}</div>
-                      <div
-                        className="w-full bg-blue-600 rounded-t hover:bg-blue-700 transition cursor-pointer"
-                        style={{height: `${week.height}%`}}
-                      ></div>
-                      <div className="text-xs text-gray-600 mt-2">{week.label}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-center gap-2 mt-4">
-                  <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-                  <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
-                  <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
-                </div>
-              </div>
+              
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={weeklyExpenses}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="week" 
+                    tick={{ fontSize: 12, fill: '#4C331D' }}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12, fill: '#4C331D' }}
+                    label={{ value: '$', angle: 0, position: 'insideLeft', fill: '#4C331D' }}
+                  />
+                  <Tooltip 
+                    formatter={(value) => `$${value}`}
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: '1px solid #ccc',
+                      borderRadius: '4px'
+                    }}
+                  />
+                  <Bar dataKey="amount" fill="#407947" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
       </div>
     </div>
   )
-}
-
-export default function Dashboard() {
-  return (
-    <ProtectedRoute>
-      <ExpensesContent />
-    </ProtectedRoute>
-  );
 }
