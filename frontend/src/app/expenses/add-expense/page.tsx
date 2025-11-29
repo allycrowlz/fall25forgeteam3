@@ -54,7 +54,7 @@ export default function AddExpense() {
     async function loadGroups() {
       setLoading(true);
       try {
-        const data = await getUserGroups(155);
+        const data = await getUserGroups(184);
         setGroups(data);
 
       } catch (error) {

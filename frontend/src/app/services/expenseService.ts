@@ -148,9 +148,11 @@ export async function postSplits(itemId : number, amountSplits : UserSplitAmount
     console.log("Key: " + id + ", Value: " + amount);
     const split : Split = {
       item_id: itemId,
-      amount_owed: amount,
-      profile_id: parseInt(id)
+      profile_id: parseInt(id),
+      amount_owed: amount
     };
+
+    console.log(JSON.stringify(split));
     const response = await fetch("http://127.0.0.1:8000/api/expenseslists/expenses/splits", {
      method: "POST",
       headers: {
@@ -158,5 +160,6 @@ export async function postSplits(itemId : number, amountSplits : UserSplitAmount
       },
       body: JSON.stringify(split),
     });
+   console.log(await response.json());
   }
 }

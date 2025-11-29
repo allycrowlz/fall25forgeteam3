@@ -74,4 +74,25 @@ async def get_group_lists(group_id: int):
 async def total_balance(id: int):
     """Not yet implemented"""
 
-# @router.put("/api/expenses/:id/splits/:split_id/paid")
+
+@router.put("/api/expenses/splits/{split_id}/paid")
+async def pay_split(split_id: int):
+   try:
+        result = expense_queries.pay_split(split_id)
+        
+        if result is None:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Expense split with id {split_id} not found"
+            )
+        
+        return result
+    
+   except HTTPException:
+        raise  # Re-raise HTTP exceptions
+   except Exception as e:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Failed to mark split as paid: {str(e)}"
+        )
+

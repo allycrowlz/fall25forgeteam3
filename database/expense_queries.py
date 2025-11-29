@@ -12,15 +12,20 @@ def get_all_expenses_in_list(list_id: int):
     """
     conn = connection.get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM expense_item WHERE list_id = %s;", (list_id,))
-    rows = cur.fetchall()
-    columns = [description_attributes[0] 
-            for description_attributes in cur.description]
-    data = [dict(zip(columns, row)) for row in rows]
-    expense_lists = [ExpenseItem(**item) for item in data]
-    cur.close()
-    conn.close()
-    return expense_lists
+    try:
+        cur.execute("SELECT * FROM expense_item WHERE list_id = %s;", (list_id,))
+        rows = cur.fetchall()
+        columns = [description_attributes[0] 
+                for description_attributes in cur.description]
+        data = [dict(zip(columns, row)) for row in rows]
+        expense_lists = [ExpenseItem(**item) for item in data]
+        cur.close()
+        conn.close()
+        return expense_lists
+    except Exception as e:
+        cur.close()
+        conn.close()
+        raise Exception(e)
 
 def get_item_in_list(list_id: int, item_id: int):
     
@@ -30,16 +35,21 @@ def get_item_in_list(list_id: int, item_id: int):
     """
     conn = connection.get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM expense_item " \
-    "WHERE list_id = %s AND item_id = %s;", (list_id, item_id))
-    row = cur.fetchone()
-    columns = [description_attributes[0] 
-               for description_attributes in cur.description]
-    item = dict(zip(columns, row))
-    expense = ExpenseItem(**item)
-    cur.close()
-    conn.close()
-    return expense
+    try:
+        cur.execute("SELECT * FROM expense_item " \
+        "WHERE list_id = %s AND item_id = %s;", (list_id, item_id))
+        row = cur.fetchone()
+        columns = [description_attributes[0] 
+                for description_attributes in cur.description]
+        item = dict(zip(columns, row))
+        expense = ExpenseItem(**item)
+        cur.close()
+        conn.close()
+        return expense
+    except Exception as e:
+        cur.close()
+        conn.close()
+        raise Exception(e)
 
 def get_group_lists(group_id: int):
     
@@ -47,16 +57,22 @@ def get_group_lists(group_id: int):
     Returns all of the expense lists for a given group based on group id
     as a list of pydantic models
     """
+    
     conn = connection.get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM expense_list WHERE group_id = %s", (group_id,))
-    rows= cur.fetchall()
-    columns = [desc[0] for desc in cur.description]
-    data = [dict(zip(columns, row)) for row in rows]
-    lists = [ExpenseList(**expList) for expList in data]
-    cur.close()
-    conn.close()
-    return lists
+    try:
+        cur.execute("SELECT * FROM expense_list WHERE group_id = %s", (group_id,))
+        rows= cur.fetchall()
+        columns = [desc[0] for desc in cur.description]
+        data = [dict(zip(columns, row)) for row in rows]
+        lists = [ExpenseList(**expList) for expList in data]
+        cur.close()
+        conn.close()
+        return lists
+    except Exception as e:
+        cur.close()
+        conn.close()
+        raise Exception(e)
 
 def delete_expense(item_id: int):
 
@@ -135,6 +151,67 @@ def create_split (split : ExpenseSplit):
         conn.close()
         raise Exception(e)
 
+
+def pay_split(split_id: int):
+
+    conn = connection.get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            UPDATE expense_split
+            SET is_active = false
+            WHERE split_id = %s
+            RETURNING split_id, item_id, is_active, amount_owed, profile_id, date_created
+            """, (split_id,))
+        result = cur.fetchone()
+        complete_split = None
+        if result is not None: 
+            split, item_id, is_active, amount_owed, profile, date_created = result
+            complete_split = ExpenseSplit(
+                split_id=split,
+                item_id=item_id, 
+                is_active=is_active, 
+                amount_owed=amount_owed,
+                profile_id=profile, 
+                date_created=date_created
+            )
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("SUCCESS")
+        return complete_split
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        raise Exception(e)
+
+def get_profile_splits(profile_id: int):
+    
+    conn = connection.get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+                SELECT *
+                FROM expense_split
+                WHERE profile_id = %s
+                """, (profile_id,))
+    
+
+        rows = cur.fetchall()
+        columns = [description_attributes[0] 
+                for description_attributes in cur.description]
+        data = [dict(zip(columns, row)) for row in rows]
+        splits = [ExpenseSplit(**data_val) for data_val in data]
+        cur.close()
+        conn.close()
+        return splits
+    except Exception as e:
+        cur.close()
+        conn.close()
+        raise Exception(e)
 
 
 #print(records)
