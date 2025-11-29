@@ -1,7 +1,5 @@
 import logfire
-from fastapi import APIRouter, FastAPI, HTTPException
-from pydantic import BaseModel
-import datetime
+from fastapi import APIRouter, HTTPException
 
 import sys
 from pathlib import Path
@@ -70,9 +68,15 @@ async def get_group_lists(group_id: int):
     """
     return expense_queries.get_group_lists(group_id)
 
-@router.get("/api/groups/{group_id}/expenseslists/{list_id}/expenses/balance")
-async def total_balance(id: int):
-    """Not yet implemented"""
+@router.get("/api/expenses/splits/{profile_id}/balance")
+async def total_balance(profile_id: int):
+
+    """
+    Gets the total balance for the given user by adding together all 
+    the splits for the given user that are active.
+    """
+    return expense_queries.get_total_balance(profile_id)
+    
 
 
 @router.put("/api/expenses/splits/{split_id}/paid")
@@ -87,12 +91,10 @@ async def pay_split(split_id: int):
             )
         
         return result
-    
-   except HTTPException:
-        raise  # Re-raise HTTP exceptions
+   
    except Exception as e:
         raise HTTPException(
-            status_code=404,
+            status_code=500,
             detail=f"Failed to mark split as paid: {str(e)}"
         )
 

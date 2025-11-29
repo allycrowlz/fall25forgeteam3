@@ -1,17 +1,33 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { getUserBalance } from '../services/expenseService';
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('All')
-  const router = useRouter()
+  const [balance, setBalance] = useState<String>("0.00");
+  const [activeTab, setActiveTab] = useState('All');
+  const router = useRouter();
 
   const friends = [
     { name: 'Friend 1', amount: 45.50 },
     { name: 'Friend 2', amount: -23.00 },
     { name: 'Friend 3', amount: 67.25 }
   ]
+
+  useEffect(() =>
+  {
+    async function loadData(profile_id : number) {
+      try {
+        const data = await getUserBalance(profile_id);
+        setBalance(data);
+      } catch {
+        setBalance("0.00");
+      }
+      
+    }
+    loadData(183);
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -32,18 +48,9 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-800">Total Balance</h2>
-              <select className="border border-gray-300 rounded px-3 py-1 text-sm">
-                <option>This Month</option>
-                <option>Last Month</option>
-                <option>This Year</option>
-              </select>
             </div>
             
-            <div className="text-4xl font-bold text-gray-900 mb-2">$89.75</div>
-            <div className="flex items-center gap-2 text-green-600">
-              <span className="text-lg">↗</span>
-              <span className="text-sm">+12.5% from last month</span>
-            </div>
+            <div className="text-4xl font-bold text-gray-900 mb-2">${balance}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-6">

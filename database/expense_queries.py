@@ -213,6 +213,31 @@ def get_profile_splits(profile_id: int):
         conn.close()
         raise Exception(e)
 
+def get_total_balance(profile_id: int):
+    conn = connection.get_connection()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute("""
+            SELECT COALESCE(SUM(amount_owed), 0) as total_balance
+            FROM expense_split
+            WHERE profile_id = %s AND is_active = true
+            """, (profile_id,))
+        
+        result = cur.fetchone()
+        total_balance = result[0] if result else 0
+        
+        return float(total_balance)
+    
+    except Exception as e:
+        conn.rollback()
+        raise e
+    
+    finally:
+        cur.close()
+        conn.close()
+
+
 
 #print(records)
 print(get_group_lists(0))

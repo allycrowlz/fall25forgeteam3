@@ -310,7 +310,7 @@ export default function AddExpense() {
                   console.log("quantity:", 1);
                   console.log("payer:", payer);
                 } else {
-                  // router.push('/expenses');
+                  router.push('/expenses');
                   const newExpenseId: number = await postExpense(expenseName!, selectedList!, cost, 1/**quantity */, description, payer);
                   if (splitMembers.length > 0) {
                     if (customSplit) {

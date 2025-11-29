@@ -104,6 +104,13 @@ export async function getGroupExpenseLists(groupId : number) : Promise<GroupExpe
     return data;
 }
 
+export async function getUserBalance(profileId : number) : Promise<String> {
+  const response = await fetch(`http://127.0.0.1:8000/api/expenses/splits/${profileId}/balance`);
+  if (!response.ok) throw new Error("Failed to fetch groups.");
+  const data : number = await response.json();
+    return data.toFixed(2)
+}
+
 /**
  * Posts an Expense to the expenses table in the database.
  * 
@@ -142,8 +149,15 @@ export async function postExpense(expenseName: String,
     return completeExpense.item_id;
 }
 
-
-export async function postSplits(itemId : number, amountSplits : UserSplitAmountHash) {
+/**
+ * Posts a Split to the backend for every key within amountSplits.
+ * 
+ * @param itemId The id of the item the splits are associated with.
+ * @param amountSplits a hash map of profile ids and amount they owe. Each key-value pair in
+ * the map posts a split to the backend.
+ */
+export async function postSplits(itemId : number, 
+                                  amountSplits : UserSplitAmountHash) {
   for (const [id, amount] of Object.entries(amountSplits)) {
     console.log("Key: " + id + ", Value: " + amount);
     const split : Split = {
