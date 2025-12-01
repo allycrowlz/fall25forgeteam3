@@ -26,7 +26,7 @@ function ExpensesContent() {
     async function loadData() {
       try {
         const user : User = await getCurrentUser();
-        setCurUser(user.id? Number(user.id) : 0);
+        setCurUser(user.profile_id? Number(user.profile_id) : 0);
 
         const data = await getUserBalance(user.profile_id? Number(user.profile_id) : 0);
         setBalance(data);
@@ -86,9 +86,9 @@ function ExpensesContent() {
               <div className='h-88 overflow-auto'>
               {groupSplits.filter((split) => {
                 if (activeTab == 1) {
-                  return split.profile_id != 183;
+                  return split.profile_id != curUser;
                 } else if (activeTab == 2) {
-                  return split.profile_id == 183;
+                  return split.profile_id == curUser;
                 } else {
                   return true;
                 }
