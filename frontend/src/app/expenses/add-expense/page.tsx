@@ -241,7 +241,7 @@ export default function AddExpense() {
                     const idsToRemove: number[] = Object.keys(userSplitHashMap)
                       .map(key => parseInt(key)).filter(key => !selectedIds.includes(key));
                     idsToRemove.forEach(id => deleteSplit(id));
-                    selectedIds.forEach(id => addOrUpdateSplit(id, cost / (selectedIds.length + 1)));
+                    selectedIds.forEach(id => addOrUpdateSplit(id, Number((cost / (selectedIds.length + 1)).toFixed(2))));
                   }}
 
                 />
@@ -283,7 +283,7 @@ export default function AddExpense() {
                           placeholder="0.00"
                           defaultValue={cost / (splitMembers.length + 1)}
                           key={member.profile_id}
-                          onChange={e => addOrUpdateSplit(member.profile_id, parseFloat(e.target.value) || 0)}
+                          onChange={e => addOrUpdateSplit(member.profile_id, Number(parseFloat(e.target.value).toFixed(2)) || 0)}
                         />
                       </div>
                     ))}
@@ -314,11 +314,12 @@ export default function AddExpense() {
                   const newExpenseId: number = await postExpense(expenseName!, selectedList!, cost, 1/**quantity */, description, payer);
                   if (splitMembers.length > 0) {
                     if (customSplit) {
+                      console.log(customSplit);
                       postSplits(newExpenseId, userSplitHashMap);
                     } else {
                       const splitAmount = cost / (splitMembers.length + 1);
                       for (var i = 0; i < splitMembers.length; i++) {
-                        addOrUpdateSplit(splitMembers[i], splitAmount);
+                        addOrUpdateSplit(splitMembers[i], Number(splitAmount.toFixed(2)));
                       }
                       postSplits(newExpenseId, userSplitHashMap);
                     }

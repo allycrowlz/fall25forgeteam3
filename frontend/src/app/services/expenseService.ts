@@ -32,6 +32,18 @@ type Split = {
   profile_id: number;
 }
 
+export type CompleteSplit = {
+  item_id: number;
+    profile_id: number;
+    amount_owed: number;
+    is_active: boolean;
+    split_id: number;
+    date_created: Date;
+    profile_name: String;
+    item_name: String;
+    buyer: String;
+}
+
 /**
  * Represents a group in the Group table.
  */
@@ -104,12 +116,27 @@ export async function getGroupExpenseLists(groupId : number) : Promise<GroupExpe
     return data;
 }
 
+export async function getUserSplits(profileId : number) : Promise<CompleteSplit[]> {
+  const response = await fetch(`http://127.0.0.1:8000/api/expenses/splits/${profileId}`);
+    if (!response.ok) throw new Error("Failed to fetch groups.");
+    const data : Promise<CompleteSplit[]> = response.json();
+    return data;
+}
+
+export async function getGroupSplits(groupId : number) : Promise<CompleteSplit[]> {
+  const response = await fetch(`http://127.0.0.1:8000/api/expenses/splits/groups/${groupId}`);
+    if (!response.ok) throw new Error("Failed to fetch groups.");
+    const data : Promise<CompleteSplit[]> = response.json();
+    return data;
+}
+
 export async function getUserBalance(profileId : number) : Promise<String> {
   const response = await fetch(`http://127.0.0.1:8000/api/expenses/splits/${profileId}/balance`);
   if (!response.ok) throw new Error("Failed to fetch groups.");
   const data : number = await response.json();
     return data.toFixed(2)
 }
+
 
 /**
  * Posts an Expense to the expenses table in the database.

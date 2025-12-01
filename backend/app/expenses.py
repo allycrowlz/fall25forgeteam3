@@ -68,6 +68,22 @@ async def get_group_lists(group_id: int):
     """
     return expense_queries.get_group_lists(group_id)
 
+@router.get("/api/expenses/splits/{profile_id}")
+async def total_balance(profile_id: int):
+
+    """
+    Gets all the splits for the given user that are active.
+    """
+    return expense_queries.get_profile_splits(profile_id)
+
+@router.get("/api/expenses/splits/groups/{group_id}")
+async def total_balance(group_id: int):
+
+    """
+    Gets all the splits for the given group that are active.
+    """
+    return expense_queries.get_group_splits(group_id)
+
 @router.get("/api/expenses/splits/{profile_id}/balance")
 async def total_balance(profile_id: int):
 

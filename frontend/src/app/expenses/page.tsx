@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getUserBalance } from '../services/expenseService';
+import { CompleteSplit, getGroupSplits, getUserBalance, getUserSplits } from '../services/expenseService';
 
 export default function Dashboard() {
   const [balance, setBalance] = useState<String>("0.00");
-  const [activeTab, setActiveTab] = useState('All');
+  const [groupSplits, setGroupSplits] = useState<CompleteSplit[]>([]);
+  const [activeTab, setActiveTab] = useState<number>(0);
   const router = useRouter();
+
+  const expenseSections = ['All', 'Owes Me', 'I Owe'];
 
   const friends = [
     { name: 'Friend 1', amount: 45.50 },
@@ -21,6 +24,9 @@ export default function Dashboard() {
       try {
         const data = await getUserBalance(profile_id);
         setBalance(data);
+
+        const splits = await getUserSplits(profile_id);
+        setGroupSplits(splits);
       } catch {
         setBalance("0.00");
       }
@@ -57,12 +63,12 @@ export default function Dashboard() {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">Friends & Balances</h2>
               <div className="flex gap-2 mb-4">
-                {['All', 'Owes Me', 'I Owe'].map((tab) => (
+                {expenseSections.map((tab, i) => (
                   <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    key={i}
+                    onClick={() => setActiveTab(i)}
                     className={`flex-1 py-2 rounded text-sm font-medium transition ${
-                      activeTab === tab
+                      activeTab === i
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
@@ -71,16 +77,24 @@ export default function Dashboard() {
                   </button>
                 ))}
               </div>
-              {friends.map((friend, idx) => (
+              {groupSplits.filter((split) => {
+                if (activeTab == 1) {
+                  return split.profile_id != 183;
+                } else if (activeTab == 2) {
+                  return split.profile_id == 183;
+                } else {
+                  return true;
+                }
+              }).map((split, idx) => (
                 <div key={idx} className="flex justify-between items-center py-3 border-b last:border-b-0">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-semibold">
-                      {friend.name.charAt(0)}
+                      {split.profile_id == 183? split.buyer.charAt(0) : split.profile_name.charAt(0)}
                     </div>
-                    <span className="text-gray-800 font-medium">{friend.name}</span>
+                    <span className="text-gray-800 font-medium">{split.profile_id == 183? split.buyer : split.profile_name}</span>
                   </div>
-                  <span className={`font-semibold ${friend.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {friend.amount >= 0 ? '+' : '-'}${Math.abs(friend.amount).toFixed(2)}
+                  <span className={`font-semibold ${split.profile_id == 183 ? 'text-red-600' : 'text-green-600'}`}>
+                    {split.profile_id == 183 ? '-' : '+'}${Math.abs(split.amount_owed).toFixed(2)}
                   </span>
                 </div>
               ))}

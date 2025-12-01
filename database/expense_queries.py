@@ -186,6 +186,41 @@ def pay_split(split_id: int):
         cur.close()
         conn.close()
         raise Exception(e)
+    
+def get_group_splits(group_id: int):
+    
+    conn = connection.get_connection()
+    cur = conn.cursor()
+
+    try: 
+        cur.execute("""
+                    SELECT es.*
+                    FROM expense_split es
+                    JOIN expense_item e ON es.item_id = e.item_id
+                    JOIN expense_list el ON el.list_id = e.list_id
+                    JOIN GroupProfile gp ON es.profile_id = gp.profile_id
+                    WHERE el.group_id = %s 
+                    AND gp.group_id = %s
+                    ORDER BY es.date_created DESC
+                    """, (group_id, group_id))
+        
+        rows = cur.fetchall()
+        columns = [description_attributes[0] 
+                for description_attributes in cur.description]
+        data = [dict(zip(columns, row)) for row in rows]
+        splits = [ExpenseSplit(**data_val) for data_val in data]
+        cur.close()
+        conn.close()
+        return splits
+    except Exception as e:
+        cur.close()
+        conn.close()
+        raise Exception(e)
+
+class ExpenseSplitWithProfile(ExpenseSplit):
+    profile_name: str
+    item_name: str
+    buyer: str
 
 def get_profile_splits(profile_id: int):
     
@@ -194,17 +229,22 @@ def get_profile_splits(profile_id: int):
 
     try:
         cur.execute("""
-                SELECT *
-                FROM expense_split
-                WHERE profile_id = %s
-                """, (profile_id,))
+                SELECT es.*, p.profile_name, e.item_name, buyer.profile_name as "buyer"
+                FROM expense_split es
+                JOIN profile p ON p.profile_id = es.profile_id
+                JOIN expense_item e ON es.item_id = e.item_id
+                JOIN profile buyer ON e.bought_by_id = buyer.profile_id
+                WHERE es.profile_id = %s
+                    OR e.bought_by_id = %s
+                ORDER BY es.date_created DESC
+                """, (profile_id, profile_id))
     
 
         rows = cur.fetchall()
         columns = [description_attributes[0] 
                 for description_attributes in cur.description]
         data = [dict(zip(columns, row)) for row in rows]
-        splits = [ExpenseSplit(**data_val) for data_val in data]
+        splits = [ExpenseSplitWithProfile(**data_val) for data_val in data]
         cur.close()
         conn.close()
         return splits

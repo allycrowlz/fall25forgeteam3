@@ -6,8 +6,8 @@ from security import get_password_hash, create_access_token, verify_password, de
 
 router = APIRouter()
 
-logfire.configure()
-logfire.info('Hello, {name}!', name='world')
+# logfire.configure()
+# logfire.info('Hello, {name}!', name='world')
 
 
 async def get_current_user_from_token(authorization: str = Header(None)):
