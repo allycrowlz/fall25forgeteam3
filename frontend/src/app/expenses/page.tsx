@@ -3,12 +3,14 @@ import ProtectedRoute from '../components/ProtectedRoute'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CompleteSplit, getGroupSplits, getUserBalance, getUserSplits } from '../services/expenseService';
+import { getCurrentUser, User } from '../services/authService';
 
 function ExpensesContent() {
   const [balance, setBalance] = useState<String>("0.00");
   const [groupSplits, setGroupSplits] = useState<CompleteSplit[]>([]);
   const [activeTab, setActiveTab] = useState<number>(0);
   const [paid, setPaid] = useState<number[]>([]);
+  const [curUser, setCurUser] = useState<Number>(0);
   const router = useRouter();
 
   const expenseSections = ['All', 'Owes Me', 'I Owe'];
@@ -21,19 +23,22 @@ function ExpensesContent() {
 
   useEffect(() =>
   {
-    async function loadData(profile_id : number) {
+    async function loadData() {
       try {
-        const data = await getUserBalance(profile_id);
-        setBalance(data);
+        const user : User = await getCurrentUser();
+        setCurUser(user.id? Number(user.id) : 0);
 
-        const splits = await getUserSplits(profile_id);
+        const data = await getUserBalance(user.profile_id? Number(user.profile_id) : 0);
+        setBalance(data);
+        
+        const splits = await getUserSplits(user.profile_id? Number(user.profile_id) : 0);
         setGroupSplits(splits);
       } catch {
         setBalance("0.00");
       }
       
     }
-    loadData(183);
+    loadData();
   }, [])
 
   return (
@@ -91,12 +96,12 @@ function ExpensesContent() {
                 <div key={idx} className="flex justify-between items-center py-3 border-b last:border-b-0">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-semibold">
-                      {split.profile_id == 183? split.buyer.charAt(0) : split.profile_name.charAt(0)}
+                      {split.profile_id == curUser? split.buyer.charAt(0) : split.profile_name.charAt(0)}
                     </div>
                     <span className="text-gray-800 font-medium">{split.profile_id == 183? split.buyer : split.profile_name}</span>
                   </div>
-                  <span className={`font-semibold ${split.profile_id == 183 ? 'text-red-600' : 'text-green-600'}`}>
-                    {split.profile_id == 183 ? '-' : '+'}${Math.abs(split.amount_owed).toFixed(2)}
+                  <span className={`font-semibold ${split.profile_id == curUser ? 'text-red-600' : 'text-green-600'}`}>
+                    {split.profile_id == curUser ? '-' : '+'}${Math.abs(split.amount_owed).toFixed(2)}
                   </span>
                 </div>
               ))}

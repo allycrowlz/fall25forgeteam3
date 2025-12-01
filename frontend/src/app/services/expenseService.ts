@@ -110,7 +110,7 @@ export async function getGroupMembers(groupId : number) : Promise<UserInfo[]> {
  * @returns a list of ExpenseLists, each representing an expense list for the target group.
  */
 export async function getGroupExpenseLists(groupId : number) : Promise<GroupExpenseList[]> {
-    const response = await fetch(`http://127.0.0.1:8000/api/groups/${groupId}/expenselists`);
+    const response = await fetch(`http://127.0.0.1:8000/api/expenses/groups/${groupId}/expenselists`);
     if (!response.ok) throw new Error("Failed to fetch groups.");
     const data : Promise<GroupExpenseList[]> = response.json();
     return data;
@@ -164,7 +164,7 @@ export async function postExpense(expenseName: String,
         notes: notes,
         bought_by_id: payer
     };
-    const response = await fetch("http://127.0.0.1:8000/api/expenseslists/expenses", {
+    const response = await fetch("http://127.0.0.1:8000/api/expenses/", {
      method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -194,7 +194,7 @@ export async function postSplits(itemId : number,
     };
 
     console.log(JSON.stringify(split));
-    const response = await fetch("http://127.0.0.1:8000/api/expenseslists/expenses/splits", {
+    const response = await fetch("http://127.0.0.1:8000/api/expenses/splits", {
      method: "POST",
       headers: {
         "Content-Type": "application/json",

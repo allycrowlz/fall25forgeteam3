@@ -5,6 +5,7 @@ import datetime
 from backend.app.auth_routes import get_current_user_from_token
 from backend.db.pydanticmodels import *
 from backend.db.expense_queries import (
+    create_split,
     get_all_expenses_in_list,
     get_group_splits,
     get_item_in_list,
@@ -16,12 +17,12 @@ from backend.db.expense_queries import (
 )
 router = APIRouter()
 
-try:
-    logfire.configure(token="pylf_v1_us_2YgWR7VMR3yLB7JrQPnwQJt3MFQPqW1jWKPg5p2klfMj")  
-    logfire.info('Instantiation')
-except Exception:
-    # Logfire not configured, continue without it
-    pass
+# try:
+#     logfire.configure(token="pylf_v1_us_2YgWR7VMR3yLB7JrQPnwQJt3MFQPqW1jWKPg5p2klfMj")  
+#     logfire.info('Instantiation')
+# except Exception:
+#     # Logfire not configured, continue without it
+#     pass
 
 @router.get("/")
 async def root():
@@ -38,12 +39,19 @@ async def get_recent_expenses(
     from backend.db.expense_queries import get_recent_expenses_for_user
     return get_recent_expenses_for_user(int(user_id), limit)
 
-@router.post("/expenseslists/expenses", status_code=201)
+@router.post("/", status_code=201)
 async def create_expense_endpoint(expense: ExpenseItemCreate):  # Renamed
     """
     Creates a new expense using the inputted data parsed into a PydanticCreateModel
     """
     return create_expense(expense)
+
+@router.post("/splits", status_code=201)
+async def create_expense_endpoint(split: ExpenseSplitCreate):  # Renamed
+    """
+    Creates a new split using the inputted data parsed into a PydanticCreateModel
+    """
+    return create_split(split)
 
 @router.put("/{id}")
 async def update_or_create_expense(expense: ExpenseItemCreate, id: int):
@@ -81,7 +89,7 @@ async def get_group_expense_lists(group_id: int):  # Renamed
     """
     return get_group_lists(group_id)
 
-@router.get("/api/expenses/splits/{profile_id}")
+@router.get("/splits/{profile_id}")
 async def total_balance(profile_id: int):
 
     """
@@ -89,7 +97,7 @@ async def total_balance(profile_id: int):
     """
     return get_profile_splits(profile_id)
 
-@router.get("/api/expenses/splits/groups/{group_id}")
+@router.get("/splits/groups/{group_id}")
 async def total_balance(group_id: int):
 
     """
@@ -97,7 +105,7 @@ async def total_balance(group_id: int):
     """
     return get_group_splits(group_id)
 
-@router.get("/api/expenses/splits/{profile_id}/balance")
+@router.get("/splits/{profile_id}/balance")
 async def total_balance(profile_id: int):
 
     """

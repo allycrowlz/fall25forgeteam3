@@ -5,6 +5,7 @@ import Select from 'react-select';
 import { useRouter } from 'next/navigation';
 import { getGroupExpenseLists, getGroupMembers, getUserGroups, postExpense, GroupInfo, GroupExpenseList, UserInfo, postSplits } from '@/app/services/expenseService';
 import ProtectedRoute from '@/app/components/ProtectedRoute';
+import { getCurrentUser } from '@/app/services/authService';
 
 export interface UserSplitAmountHash {
   [key: number]: number;
@@ -55,8 +56,11 @@ function AddExpenseContent() {
     async function loadGroups() {
       setLoading(true);
       try {
-        const data = await getUserGroups(184);
+        const user = await getCurrentUser();
+        console.log(user.profile_id);
+        const data = await getUserGroups(user.profile_id? Number(user.profile_id) : 0);
         setGroups(data);
+
 
       } catch (error) {
         console.error(error);
