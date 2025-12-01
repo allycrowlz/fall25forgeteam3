@@ -3,16 +3,15 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { joinGroup } from '../../services/groupService';
+import { getCurrentUser } from '../../services/authService';
+import ProtectedRoute from '../../components/ProtectedRoute';
 
-export default function JoinGroupPage() {
+function JoinGroupContent() {
   const router = useRouter();
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-
-  // TODO: Replace with real user ID from authentication
-  const TEMP_PROFILE_ID = 1;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,17 +19,23 @@ export default function JoinGroupPage() {
     setLoading(true);
 
     try {
+      // Get current user
+      const user = await getCurrentUser();
+      
+      if (!user.profile_id) {
+        throw new Error('User profile ID not found');
+      }
+      
+      // Join the group
       const result = await joinGroup(
         joinCode.trim().toUpperCase(),
-        TEMP_PROFILE_ID
+        parseInt(user.profile_id, 10)
       );
-      
+
       setSuccess(true);
-      
       setTimeout(() => {
-        router.push('/groups');
+        router.push('/'); // Redirect to main page
       }, 2000);
-      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join group');
     } finally {
@@ -41,7 +46,6 @@ export default function JoinGroupPage() {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
       <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md border-2 border-gray-300">
-        
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Join a Group
@@ -52,7 +56,6 @@ export default function JoinGroupPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          
           <div>
             <label 
               htmlFor="joinCode" 
@@ -90,13 +93,12 @@ export default function JoinGroupPage() {
           <div className="flex gap-4">
             <button
               type="button"
-              onClick={() => router.push('/groups')}
+              onClick={() => router.push('/')}
               className="flex-1 px-6 py-3 bg-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-400 transition-all"
               disabled={loading}
             >
               Cancel
             </button>
-            
             <button
               type="submit"
               className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-xl font-semibold hover:bg-gray-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
@@ -113,5 +115,13 @@ export default function JoinGroupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function JoinGroupPage() {
+  return (
+    <ProtectedRoute>
+      <JoinGroupContent />
+    </ProtectedRoute>
   );
 }

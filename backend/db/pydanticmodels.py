@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime, date
 from decimal import Decimal
@@ -11,7 +11,19 @@ class ProfileBase(BaseModel):
     profile_name: str = Field(..., max_length=100)
     email: EmailStr
     picture: Optional[str] = Field(None, max_length=255)
-    birthday: Optional[date] = None
+    birthday: Optional[str] = None
+    phone: Optional[str] = None  # ADD THIS LINE
+    
+    @field_validator('phone')  # ADD THIS VALIDATOR
+    @classmethod
+    def validate_phone(cls, v):
+        if v is not None and v != '':
+            # Remove any non-digit characters
+            digits = ''.join(filter(str.isdigit, v))
+            if len(digits) != 10:
+                raise ValueError('Phone number must be exactly 10 digits')
+            return digits
+        return None
 
 class ProfileCreate(ProfileBase):
     password: str  # Plain password (will be hashed before storing)
@@ -23,6 +35,40 @@ class Profile(ProfileBase):
     
     class Config:
         from_attributes = True  # Allows Pydantic to work with DB rows
+
+# ... (EventBase, EventCreate, Event, ProfileEventBase, etc. stay the same)
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    profile_id: int
+    profile_name: str
+    email: str
+    picture: Optional[str]
+    birthday: Optional[str]
+    phone: Optional[str] = None 
+    
+    class Config:
+        from_attributes = True
+
+class UserUpdate(BaseModel):
+    profile_name: Optional[str] = Field(None, max_length=100)
+    picture: Optional[str] = Field(None, max_length=255)
+    birthday: Optional[str] = None
+    phone: Optional[str] = None
+    
+    @field_validator('phone')  # ADD THIS VALIDATOR
+    @classmethod
+    def validate_phone(cls, v):
+        if v is not None and v != '':
+            # Remove any non-digit characters
+            digits = ''.join(filter(str.isdigit, v))
+            if len(digits) != 10:
+                raise ValueError('Phone number must be exactly 10 digits')
+            return digits
+        return None
 
 
 class EventBase(BaseModel):
@@ -57,20 +103,6 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-class UserResponse(BaseModel):
-    profile_id: int
-    profile_name: str
-    email: str
-    picture: Optional[str]
-    birthday: Optional[date]
-    
-    class Config:
-        from_attributes = True
-
-class UserUpdate(BaseModel):
-    profile_name: Optional[str] = Field(None, max_length=100)
-    picture: Optional[str] = Field(None, max_length=255)
-    birthday: Optional[date] = None
 
 # ============================================
 # GROUP MODELS
@@ -79,18 +111,39 @@ class UserUpdate(BaseModel):
 class GroupBase(BaseModel):
     group_name: str = Field(..., max_length=100)
     group_photo: Optional[str] = Field(None, max_length=255)
-    join_code: str = Field(..., max_length=20)
 
-class GroupCreate(GroupBase):
-    pass
+class GroupCreate(BaseModel):
+    """For creating a new group"""
+    group_name: str = Field(..., max_length=100)
+    group_photo: Optional[str] = Field(None, max_length=255)
+    profile_id: int  # Creator's profile ID
+
+class GroupUpdate(BaseModel):
+    """For updating group details"""
+    group_name: str = Field(..., max_length=100)
+    group_photo: Optional[str] = Field(None, max_length=255)
 
 class Group(GroupBase):
     group_id: int
     date_created: datetime
+    join_code: str
     
     class Config:
         from_attributes = True
 
+class GroupMember(BaseModel):
+    """For group member information"""
+    profile_id: int
+    profile_name: str
+    email: str
+    picture: Optional[str]
+    role: str
+    is_creator: bool
+
+class JoinGroup(BaseModel):
+    """For joining a group"""
+    join_code: str
+    profile_id: int
 
 class GroupProfileBase(BaseModel):
     group_id: int
@@ -111,34 +164,45 @@ class GroupProfile(GroupProfileBase):
 # CHORE MODELS
 # ============================================
 
-class ChoreBase(BaseModel):
+class ChoreCreate(BaseModel):
+    """Model for creating a new chore"""
     group_id: int
-    name: str = Field(..., max_length=100)
+    name: str
     due_date: Optional[datetime] = None
     notes: Optional[str] = None
 
-class ChoreCreate(ChoreBase):
-    pass
 
-class Chore(ChoreBase):
+class Chore(BaseModel):
+    """Model for a chore (without assignees)"""
     chore_id: int
+    group_id: int
+    name: str
     assigned_date: datetime
-    
-    class Config:
-        from_attributes = True
+    due_date: Optional[datetime] = None
+    notes: Optional[str] = None
 
 
-class ChoreAssigneeBase(BaseModel):
+class ChoreAssignee(BaseModel):
+    """Model for someone assigned to a chore"""
     profile_id: int
+    profile_name: str
+    status: str  # 'pending' or 'completed'
+
+
+class ChoreWithAssignees(Chore):
+    """Model for a chore with its assignees"""
+    assignees: list[ChoreAssignee] = []
+
+
+class ChoreAssign(BaseModel):
+    """Model for assigning a chore to someone"""
     chore_id: int
-    individual_status: str = Field(default="pending", pattern="^(pending|completed)$")
+    profile_id: int
 
-class ChoreAssigneeCreate(ChoreAssigneeBase):
-    pass
 
-class ChoreAssignee(ChoreAssigneeBase):
-    class Config:
-        from_attributes = True
+class ChoreStatusUpdate(BaseModel):
+    """Model for updating chore status"""
+    status: str 
 
 
 # ============================================

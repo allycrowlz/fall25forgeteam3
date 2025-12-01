@@ -1,7 +1,7 @@
 from connection import get_connection
 
 PROFILE_EVENT_TABLES = """
-CREATE TABLE Profile (
+CREATE TABLE IF NOT EXISTS Profile (
     profile_id SERIAL PRIMARY KEY,
     profile_name VARCHAR(100) NOT NULL,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
@@ -11,7 +11,7 @@ CREATE TABLE Profile (
     birthday DATE
 );
 
-CREATE TABLE Event (
+CREATE TABLE IF NOT EXISTS Event (
     event_id SERIAL PRIMARY KEY,
     event_name VARCHAR(100) NOT NULL,
     event_datetime_start TIMESTAMP NOT NULL,
@@ -20,13 +20,17 @@ CREATE TABLE Event (
     event_notes TEXT
 );
 
-CREATE TABLE ProfileEvent (
+CREATE TABLE IF NOT EXISTS ProfileEvent (
     profile_id INTEGER NOT NULL,
     event_id INTEGER NOT NULL,
     PRIMARY KEY (profile_id, event_id),
     FOREIGN KEY (profile_id) REFERENCES Profile(profile_id) ON DELETE CASCADE,
     FOREIGN KEY (event_id) REFERENCES Event(event_id) ON DELETE CASCADE
 );
+"""
+
+ADD_PHONE = """
+ALTER TABLE Profile ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
 """
 
 def create_profile_event_tables():
@@ -37,6 +41,10 @@ def create_profile_event_tables():
         
         print("Creating Profile and Event tables...")
         cursor.execute(PROFILE_EVENT_TABLES)
+        conn.commit()
+
+        print("Adding phone column...")
+        cursor.execute(ADD_PHONE)
         conn.commit()
         
         print("Successfully created Profile and Event tables")

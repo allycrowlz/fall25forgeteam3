@@ -3,15 +3,15 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { isAuthenticated } from './services/authService';
 
 export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
     // Check if user is already logged in
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      router.push('/dashboard');
+    if (isAuthenticated()) {
+      router.push('/groups');
     }
   }, [router]);
 

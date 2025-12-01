@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { Check, Plus } from 'lucide-react';
+import ProtectedRoute from '../components/ProtectedRoute';
 
-export default function TasksPage() {
+function TasksContent() {
   const [tasks, setTasks] = useState([
     { id: 1, roommate: 'Roommate 1', task: '', completed: false },
     { id: 2, roommate: 'Roommate 1', task: '', completed: false },
@@ -36,8 +37,6 @@ export default function TasksPage() {
     }]);
   };
 
-  const navItems = ['Home', 'Lists', 'Chores', 'Expenses', 'Profile', 'Settings'];
-
   const groupedTasks = tasks.reduce((acc, task) => {
     if (!acc[task.roommate]) {
       acc[task.roommate] = [];
@@ -48,38 +47,12 @@ export default function TasksPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#E8F3E9' }}>
-      {/* Header */}
-      <header className="px-8 py-4" style={{ backgroundColor: '#407947' }}>
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold text-white">HomeBase</h1>
-            <span className="text-2xl">🏠</span>
-          </div>
-          <nav className="flex gap-8">
-            {navItems.map(item => (
-              <button
-                key={item}
-                onClick={() => setActiveNav(item)}
-                className={`font-medium transition-colors text-white hover:text-gray-200 ${
-                  activeNav === item ? 'underline' : ''
-                }`}
-              >
-                {item}
-              </button>
-            ))}
-          </nav>
-        </div>
-      </header>
-
-      {/* Spacer */}
-      <div className="py-6"></div>
-
       {/* Main Content */}
-      <div className="px-8 pb-8">
-        <div className="max-w-5xl mx-auto rounded-lg p-8 relative" style={{ backgroundColor: '#CFDFD1' }}>
+      <div className="px-8 pt-24 pb-16">
+        <div className="max-w-5xl mx-auto rounded-lg p-8 relative" style={{ backgroundColor: '#DCCEBD' }}>
           {/* Tasks Badge */}
           <div className="absolute -top-8 left-1/2 transform -translate-x-1/2">
-            <div className="text-white px-12 py-3 rounded-lg shadow-lg" style={{ backgroundColor: '#4C331D' }}>
+            <div className="text-white px-12 py-3 rounded-lg shadow-lg" style={{ backgroundColor: '#1D4C23' }}>
               <span className="text-lg font-medium">Tasks</span>
             </div>
           </div>
@@ -129,7 +102,7 @@ export default function TasksPage() {
               onClick={addNewTask}
               className="w-12 h-12 bg-transparent border-3 rounded-full flex items-center justify-center transition-colors"
               style={{ borderColor: '#4C331D', borderWidth: '3px' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#CFDFD1'}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#DCCEBD'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               <Plus size={32} strokeWidth={3} style={{ color: '#4C331D' }} />
@@ -138,5 +111,13 @@ export default function TasksPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <ProtectedRoute>
+      <TasksContent />
+    </ProtectedRoute>
   );
 }

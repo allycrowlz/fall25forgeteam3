@@ -1,10 +1,10 @@
 'use client'
-
+import ProtectedRoute from '../components/ProtectedRoute'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CompleteSplit, getGroupSplits, getUserBalance, getUserSplits } from '../services/expenseService';
 
-export default function Dashboard() {
+function ExpensesContent() {
   const [balance, setBalance] = useState<String>("0.00");
   const [groupSplits, setGroupSplits] = useState<CompleteSplit[]>([]);
   const [activeTab, setActiveTab] = useState<number>(0);
@@ -156,4 +156,12 @@ export default function Dashboard() {
       </div>
     </div>
   )
+}
+
+export default function Dashboard() {
+  return (
+    <ProtectedRoute>
+      <ExpensesContent />
+    </ProtectedRoute>
+  );
 }
