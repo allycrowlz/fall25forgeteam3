@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Homebase API...")
 
 # Create FastAPI application
-backend.app = FastAPI(
+app = FastAPI(
     title="Homebase API",
     description="API for managing shopping lists and user profiles",
     version="1.0.0",
@@ -41,7 +41,7 @@ backend.app = FastAPI(
 )
 
 # CORS Configuration
-backend.app.add_middleware(
+app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
@@ -71,13 +71,13 @@ async def global_exception_handler(request, exc):
 from app import auth_routes, shopping_list_routes, group_routes, expenses
 
 # Include routers
-backend.app.include_router(
+app.include_router(
     auth_routes.router,
     prefix="/api/auth",
     tags=["Authentication"]
 )
 
-backend.app.include_router(
+app.include_router(
     shopping_list_routes.router,
     tags=["Shopping Lists"]
 )

@@ -27,8 +27,6 @@ function BillSplittingContent() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Navigation Bar */}
-      <Navbar />
 
       <div className="px-6 pb-12">
         <div className="max-w-6xl mx-auto">

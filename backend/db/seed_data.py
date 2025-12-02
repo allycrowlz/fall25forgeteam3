@@ -399,6 +399,7 @@ def seed_all():
     print("  - Mission Hill Apartment (4 members)")
     print("  - Northeastern Study Group (5 members)")
     print("  - Off-Campus House (3 members)")
+    print(profile_ids[4])
 
 
 if __name__ == "__main__":
