@@ -1,10 +1,9 @@
-import logfire
 from fastapi import APIRouter, FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 import datetime
-from backend.app.auth_routes import get_current_user_from_token
-from backend.db.pydanticmodels import *
-from backend.db.expense_queries import (
+from app.auth_routes import get_current_user_from_token
+from db.pydanticmodels import *
+from db.expense_queries import (
     get_all_expenses_in_list,
     get_item_in_list,
     get_group_lists,
@@ -12,13 +11,6 @@ from backend.db.expense_queries import (
     create_expense
 )
 router = APIRouter()
-
-try:
-    logfire.configure(token="pylf_v1_us_2YgWR7VMR3yLB7JrQPnwQJt3MFQPqW1jWKPg5p2klfMj")  
-    logfire.info('Instantiation')
-except Exception:
-    # Logfire not configured, continue without it
-    pass
 
 @router.get("/")
 async def root():
@@ -32,7 +24,7 @@ async def get_recent_expenses(
     """
     Gets recent expenses for the current user across all their groups
     """
-    from backend.db.expense_queries import get_recent_expenses_for_user
+    from db.expense_queries import get_recent_expenses_for_user
     return get_recent_expenses_for_user(int(user_id), limit)
 
 @router.post("/expenseslists/expenses", status_code=201)

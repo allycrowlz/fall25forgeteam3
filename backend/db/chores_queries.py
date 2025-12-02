@@ -1,10 +1,12 @@
-from backend.db.connection import get_connection
+from db.connection import get_connection
+from psycopg2.extras import RealDictCursor
 from datetime import datetime
 from typing import Optional, List, Dict
 
 # ==================== CHORE CRUD ====================
 
-def create_chore(group_id: int, name: str, due_date: Optional[datetime] = None, 
+def create_chore(group_id: int, name: str, category: Optional[str] = None,
+                 due_date: Optional[datetime] = None, 
                  notes: Optional[str] = None) -> int:
     """
     Create a new chore
@@ -15,15 +17,16 @@ def create_chore(group_id: int, name: str, due_date: Optional[datetime] = None,
     
     try:
         conn = get_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         cursor.execute("""
-            INSERT INTO Chore (group_id, name, due_date, notes)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO Chore (group_id, name, category, due_date, notes)
+            VALUES (%s, %s, %s, %s, %s)
             RETURNING chore_id
-        """, (group_id, name, due_date, notes))
+        """, (group_id, name, category, due_date, notes))
         
-        chore_id = cursor.fetchone()['chore_id']
+        result = cursor.fetchone()
+        chore_id = result['chore_id'] if result else None
         conn.commit()
         return chore_id
         
@@ -46,10 +49,10 @@ def get_chore_by_id(chore_id: int) -> Optional[Dict]:
     
     try:
         conn = get_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         cursor.execute("""
-            SELECT chore_id, group_id, name, assigned_date, due_date, notes
+            SELECT chore_id, group_id, name, category, assigned_date, due_date, notes
             FROM Chore
             WHERE chore_id = %s
         """, (chore_id,))
@@ -71,10 +74,10 @@ def get_chores_for_group(group_id: int) -> List[Dict]:
     
     try:
         conn = get_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         cursor.execute("""
-            SELECT chore_id, group_id, name, assigned_date, due_date, notes
+            SELECT chore_id, group_id, name, category, assigned_date, due_date, notes
             FROM Chore
             WHERE group_id = %s
             ORDER BY due_date ASC NULLS LAST, assigned_date DESC
@@ -99,13 +102,14 @@ def get_chores_with_assignees(group_id: int) -> List[Dict]:
     
     try:
         conn = get_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         cursor.execute("""
             SELECT 
                 c.chore_id,
                 c.group_id,
                 c.name,
+                c.category,
                 c.assigned_date,
                 c.due_date,
                 c.notes,
@@ -123,7 +127,7 @@ def get_chores_with_assignees(group_id: int) -> List[Dict]:
             LEFT JOIN ChoreAssignee ca ON c.chore_id = ca.chore_id
             LEFT JOIN Profile p ON ca.profile_id = p.profile_id
             WHERE c.group_id = %s
-            GROUP BY c.chore_id, c.group_id, c.name, c.assigned_date, c.due_date, c.notes
+            GROUP BY c.chore_id, c.group_id, c.name, c.category, c.assigned_date, c.due_date, c.notes
             ORDER BY c.due_date ASC NULLS LAST, c.assigned_date DESC
         """, (group_id,))
         
@@ -208,13 +212,14 @@ def get_chores_for_profile(profile_id: int) -> List[Dict]:
     
     try:
         conn = get_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         cursor.execute("""
             SELECT 
                 c.chore_id,
                 c.group_id,
                 c.name,
+                c.category,
                 c.assigned_date,
                 c.due_date,
                 c.notes,
@@ -283,7 +288,7 @@ def toggle_chore_status(chore_id: int, profile_id: int) -> str:
     
     try:
         conn = get_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         cursor.execute("""
             UPDATE ChoreAssignee
@@ -312,44 +317,6 @@ def toggle_chore_status(chore_id: int, profile_id: int) -> str:
             conn.close()
 
 
-def get_chores_for_profile(profile_id: int) -> List[Dict]:
-    """
-    Get all chores assigned to a specific profile
-    """
-    conn = None
-    cursor = None
-    
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT 
-                c.chore_id,
-                c.group_id,
-                c.name,
-                c.assigned_date,
-                c.due_date,
-                c.notes,
-                ca.individual_status,
-                g.group_name
-            FROM Chore c
-            JOIN ChoreAssignee ca ON c.chore_id = ca.chore_id
-            JOIN "Group" g ON c.group_id = g.group_id
-            WHERE ca.profile_id = %s
-            ORDER BY c.due_date ASC NULLS LAST, c.assigned_date DESC
-        """, (profile_id,))
-        
-        results = cursor.fetchall()
-        return [dict(row) for row in results]
-        
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-
-
 def update_chore(chore_id: int, **kwargs) -> bool:
     """
     Update chore details
@@ -367,7 +334,7 @@ def update_chore(chore_id: int, **kwargs) -> bool:
         values = []
         
         for key, value in kwargs.items():
-            if key in ['name', 'due_date', 'notes']:
+            if key in ['name', 'category', 'due_date', 'notes']:
                 fields.append(f"{key} = %s")
                 values.append(value)
         

@@ -1,4 +1,4 @@
-from backend.db.connection import get_connection
+from db.connection import get_connection
 from datetime import datetime
 from typing import Optional, List, Dict
 

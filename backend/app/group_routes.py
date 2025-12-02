@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException
 import string
 import random
 from psycopg2.extras import RealDictCursor
-from backend.db.connection import get_connection
-from backend.db.pydanticmodels import (
+from db.connection import get_connection
+from db.pydanticmodels import (
     GroupCreate, 
     GroupUpdate, 
     GroupMember, 

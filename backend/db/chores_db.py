@@ -31,6 +31,10 @@ CREATE INDEX IF NOT EXISTS idx_chore_assignee_profile ON ChoreAssignee(profile_i
 CREATE INDEX IF NOT EXISTS idx_chore_assignee_chore ON ChoreAssignee(chore_id);
 """
 
+ADD_CATEGORY = """
+ALTER TABLE Chore ADD COLUMN IF NOT EXISTS category VARCHAR(50);
+"""
+
 def create_chore_tables():
     """Create Chore related tables"""
     conn = None
@@ -43,6 +47,11 @@ def create_chore_tables():
         print("Creating Chore tables...")
         cursor.execute(CHORE_TABLES)
         conn.commit()
+        
+        print("Adding category column...")
+        cursor.execute(ADD_CATEGORY)
+        conn.commit()
+        
         print("Successfully created Chore tables")
         
     except Exception as e:
