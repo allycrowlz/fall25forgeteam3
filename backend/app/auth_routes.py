@@ -3,9 +3,9 @@ from fastapi import APIRouter, HTTPException, status, Header, Depends
 from psycopg2 import Error as PsycopgError
 from jose import jwt, JWTError
 
-from backend.db.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
-from backend.db.connection import get_connection
-from backend.app.security import (
+from db.pydanticmodels import ProfileCreate, UserLogin, UserResponse, UserUpdate
+from db.connection import get_connection
+from app.security import (
     get_password_hash, 
     create_access_token, 
     verify_password, 

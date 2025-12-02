@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
-from backend.db.pydanticmodels import (
+from db.pydanticmodels import (
     ChoreCreate, 
     Chore, 
     ChoreWithAssignees, 
     ChoreAssign, 
     ChoreStatusUpdate
 )
-from backend.db.chores_queries import (
+from db.chores_queries import (
     create_chore, get_chore_by_id, get_chores_for_group,
     get_chores_with_assignees, assign_chore_to_profile,
     unassign_chore_from_profile, update_chore_status,
@@ -28,6 +28,7 @@ async def create_chore_endpoint(chore: ChoreCreate):  # Renamed to avoid conflic
         chore_id = create_chore(  # Changed from chore_queries.create_chore
             group_id=chore.group_id,
             name=chore.name,
+            category=chore.category,
             due_date=chore.due_date,
             notes=chore.notes
         )
@@ -110,6 +111,7 @@ async def update_chore_endpoint(chore_id: int, chore_update: ChoreCreate):  # Re
         success = update_chore(  # Changed
             chore_id=chore_id,
             name=chore_update.name,
+            category=chore_update.category,
             due_date=chore_update.due_date,
             notes=chore_update.notes
         )
@@ -151,7 +153,7 @@ async def delete_chore_endpoint(chore_id: int):  # Renamed
 async def assign_chore(chore_id: int, assignment: ChoreAssign):
     """
     Assign a chore to a roommate/profile
-    Body: { "chore_id": 1, "profile_id": 5 }
+    Body: { "profile_id": 5 }
     """
     try:
         success = assign_chore_to_profile(  # Changed

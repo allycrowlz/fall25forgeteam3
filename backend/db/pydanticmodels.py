@@ -168,6 +168,7 @@ class ChoreCreate(BaseModel):
     """Model for creating a new chore"""
     group_id: int
     name: str
+    category: Optional[str] = None  # e.g., "Kitchen", "Bathroom", "General"
     due_date: Optional[datetime] = None
     notes: Optional[str] = None
 
@@ -177,6 +178,7 @@ class Chore(BaseModel):
     chore_id: int
     group_id: int
     name: str
+    category: Optional[str] = None
     assigned_date: datetime
     due_date: Optional[datetime] = None
     notes: Optional[str] = None
@@ -196,7 +198,6 @@ class ChoreWithAssignees(Chore):
 
 class ChoreAssign(BaseModel):
     """Model for assigning a chore to someone"""
-    chore_id: int
     profile_id: int
 
 

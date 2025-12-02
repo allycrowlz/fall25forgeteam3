@@ -1,7 +1,7 @@
 from datetime import datetime
 import psycopg2
 from .pydanticmodels import ExpenseItem, ExpenseItemCreate, ExpenseList
-from backend.db.connection import get_connection
+from db.connection import get_connection
 
 def get_all_expenses_in_list(list_id: int):
     """Return all expenses in a list as pydantic models."""

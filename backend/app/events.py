@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel
-from backend.app.auth_routes import get_current_user_from_token
-from backend.db.event_queries import (
+from app.auth_routes import get_current_user_from_token
+from db.event_queries import (
     create_event,
     get_events_for_profile,
     delete_event,
@@ -32,7 +32,7 @@ async def create_event_endpoint(
         
         # If group_id provided, add all group members
         if event.group_id:
-            from backend.db.connection import get_connection
+            from db.connection import get_connection
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute("""
