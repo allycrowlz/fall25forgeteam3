@@ -6,6 +6,12 @@ import { joinGroup } from '../../services/groupService';
 import { getCurrentUser } from '../../services/authService';
 import ProtectedRoute from '../../components/ProtectedRoute';
 
+const PAGE_BG = "#E8F3E9";
+const BROWN = "#4C331D";
+const GREEN = "#407947";
+const LIGHT_GREEN = "#CFDFD1";
+const BEIGE = "#DCCEBD";
+
 function JoinGroupContent() {
   const router = useRouter();
   const [joinCode, setJoinCode] = useState('');
@@ -44,22 +50,35 @@ function JoinGroupContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
-      <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md border-2 border-gray-300">
+    <div 
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{ backgroundColor: PAGE_BG }}
+    >
+      <div 
+        className="rounded-2xl shadow-lg p-8 w-full max-w-md"
+        style={{ 
+          backgroundColor: 'white',
+          border: `1px solid ${LIGHT_GREEN}`
+        }}
+      >
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 
+            className="text-3xl font-bold mb-2"
+            style={{ color: BROWN }}
+          >
             Join a Group
           </h1>
-          <p className="text-gray-600">
+          <p style={{ color: BROWN }}>
             Enter the invite code to join an existing group
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6">
           <div>
             <label 
               htmlFor="joinCode" 
-              className="block text-sm font-semibold text-gray-700 mb-2"
+              className="block text-sm font-semibold mb-2"
+              style={{ color: BROWN }}
             >
               Invite Code
             </label>
@@ -68,8 +87,20 @@ function JoinGroupContent() {
               type="text"
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !loading && !success && joinCode.trim()) {
+                  handleSubmit(e);
+                }
+              }}
               placeholder="Enter invite code"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 text-lg font-mono uppercase"
+              className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 text-lg font-mono uppercase"
+              style={{
+                border: `1px solid ${LIGHT_GREEN}`,
+                color: BROWN,
+                backgroundColor: 'white'
+              }}
+              onFocus={(e) => e.target.style.borderColor = GREEN}
+              onBlur={(e) => e.target.style.borderColor = LIGHT_GREEN}
               disabled={loading || success}
               required
               maxLength={8}
@@ -77,15 +108,29 @@ function JoinGroupContent() {
           </div>
 
           {error && (
-            <div className="bg-red-100 border-2 border-red-300 text-red-700 px-4 py-3 rounded-xl">
-              <p className="font-semibold">❌ {error}</p>
+            <div 
+              className="px-4 py-3 rounded-lg"
+              style={{
+                backgroundColor: '#FEE2E2',
+                border: '1px solid #FCA5A5',
+                color: BROWN
+              }}
+            >
+              <p className="font-semibold">{error}</p>
             </div>
           )}
 
           {success && (
-            <div className="bg-green-100 border-2 border-green-300 text-green-700 px-4 py-3 rounded-xl">
+            <div 
+              className="px-4 py-3 rounded-lg"
+              style={{
+                backgroundColor: LIGHT_GREEN,
+                border: `1px solid ${GREEN}`,
+                color: BROWN
+              }}
+            >
               <p className="font-semibold">
-                ✅ Successfully joined group! Redirecting...
+                Successfully joined group! Redirecting...
               </p>
             </div>
           )}
@@ -94,22 +139,39 @@ function JoinGroupContent() {
             <button
               type="button"
               onClick={() => router.push('/')}
-              className="flex-1 px-6 py-3 bg-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-400 transition-all"
+              className="flex-1 px-6 py-3 rounded-lg font-semibold transition-all"
+              style={{
+                backgroundColor: BEIGE,
+                color: BROWN,
+                border: `1px solid ${LIGHT_GREEN}`
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#D4C4B0'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = BEIGE}
               disabled={loading}
             >
               Cancel
             </button>
             <button
-              type="submit"
-              className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-xl font-semibold hover:bg-gray-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              type="button"
+              onClick={handleSubmit}
+              className="flex-1 px-6 py-3 rounded-lg font-semibold transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: GREEN,
+                color: 'white'
+              }}
+              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#356839')}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = GREEN}
               disabled={loading || success || !joinCode.trim()}
             >
               {loading ? 'Joining...' : 'Join Group'}
             </button>
           </div>
-        </form>
+        </div>
 
-        <div className="mt-6 text-center text-sm text-gray-600">
+        <div 
+          className="mt-6 text-center text-sm"
+          style={{ color: BROWN }}
+        >
           <p>Don't have an invite code?</p>
           <p>Ask a group member to share their group's invite code with you.</p>
         </div>

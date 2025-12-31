@@ -100,7 +100,7 @@ async def register(user_data: ProfileCreate, conn = Depends(get_db)):
                 user_data.phone if hasattr(user_data, 'phone') else None
             ))
 
-            new_user_id = cursor.fetchone()[0]
+            new_user_id = cursor.fetchone()['profile_id']
             conn.commit()
 
             logger.info(f"New user registered: {new_user_id}")
@@ -150,8 +150,8 @@ async def login(credentials: UserLogin, conn = Depends(get_db)):
                     detail="Incorrect email or password"
                 )
 
-            profile_id = user[0]
-            stored_password_hash = user[1]
+            profile_id = user['profile_id']
+            stored_password_hash = user['password_hash']
 
             # Verify password
             if not verify_password(credentials.password, stored_password_hash):
@@ -292,13 +292,14 @@ async def get_current_user(
                     detail="User not found"
                 )
             
+            # Use dictionary access instead of tuple indexing
             return UserResponse(
-                profile_id=user[0],
-                profile_name=user[1],
-                email=user[2],
-                picture=user[3],
-                birthday=user[4].isoformat() if user[4] else None,
-                phone=user[5]
+                profile_id=user['profile_id'],
+                profile_name=user['profile_name'],
+                email=user['email'],
+                picture=user['picture'],
+                birthday=user['birthday'].isoformat() if user['birthday'] else None,
+                phone=user['phone']
             )
     
     except HTTPException:
@@ -374,14 +375,13 @@ async def update_user(
             logger.info(f"User updated: {user_id}")
 
             return UserResponse(
-                profile_id=updated_user[0],
-                profile_name=updated_user[1],
-                email=updated_user[2],
-                picture=updated_user[3],
-                birthday=updated_user[4].isoformat() if updated_user[4] else None,
-                phone=updated_user[5]
+                profile_id=updated_user['profile_id'],
+                profile_name=updated_user['profile_name'],
+                email=updated_user['email'],
+                picture=updated_user['picture'],
+                birthday=updated_user['birthday'].isoformat() if updated_user['birthday'] else None,
+                phone=updated_user['phone']
             )
-    
     except HTTPException:
         raise
     except PsycopgError as e:

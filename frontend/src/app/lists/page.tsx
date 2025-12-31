@@ -2,7 +2,9 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import ProtectedRoute from '../components/ProtectedRoute';
-import { Plus, Star, Upload, Trash2, List } from "lucide-react";
+import { Plus, Trash2, Download, Check, X } from "lucide-react";
+import { useGroup } from '../contexts/GroupContext';
+import { getCurrentUser } from '../services/authService';
 import { 
   getShoppingListWithItems, 
   addItemToList, 
@@ -14,6 +16,13 @@ import {
   ListItem as ApiListItem,
   ShoppingList
 } from "../services/shoppingListService";
+
+// Color scheme
+const PAGE_BG = "#E8F3E9";
+const BROWN = "#4C331D";
+const GREEN = "#407947";
+const LIGHT_GREEN = "#CFDFD1";
+const BEIGE = "#DCCEBD";
 
 // Types
 interface Item { 
@@ -34,19 +43,25 @@ function ItemRow({
   onDelete: (id: number) => void;
 }) {
   return (
-    <li className="flex items-center gap-3 rounded-md border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+    <li className="flex items-center gap-3 rounded-xl border-2 px-4 py-3 transition-all hover:shadow-md" style={{ backgroundColor: "white", borderColor: BROWN }}>
       <input
         type="checkbox"
         checked={item.bought}
         onChange={() => onToggle(item.item_id)}
-        className="h-4 w-4 accent-[#2b4a2e]"
+        className="h-5 w-5 rounded cursor-pointer"
+        style={{ accentColor: BROWN }}
       />
-      <span className={`grow ${item.bought ? "text-neutral-400 line-through" : "text-neutral-800"}`}>
-        {item.item_name} {item.item_quantity > 1 && `(x${item.item_quantity})`}
+      <span className={`grow font-medium ${item.bought ? "line-through opacity-60" : ""}`} style={{ color: BROWN }}>
+        {item.item_name}
       </span>
+      {item.item_quantity > 1 && (
+        <span className="px-2 py-1 rounded-full text-sm font-semibold" style={{ backgroundColor: BEIGE, color: BROWN }}>
+          x{item.item_quantity}
+        </span>
+      )}
       <button
         onClick={() => onDelete(item.item_id)}
-        className="text-red-500 hover:text-red-700"
+        className="text-red-600 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-all"
         aria-label="Delete item"
       >
         <Trash2 className="h-4 w-4" />
@@ -56,13 +71,13 @@ function ItemRow({
 }
 
 function ShoppingListPage() {
+  const { currentGroup, loading: groupLoading } = useGroup();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allLists, setAllLists] = useState<ShoppingList[]>([]);
   const [currentList, setCurrentList] = useState<ShoppingList | null>(null);
-  const [groupId] = useState<number>(55); // TODO: Get from URL params or context
-  const [currentUserId] = useState<number>(153); // TODO: Get from auth context
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -74,15 +89,38 @@ function ShoppingListPage() {
     return { done, total: items.length };
   }, [items]);
 
-  // Fetch all shopping lists on mount
+  // Get current user ID
   useEffect(() => {
+    const fetchUserId = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (user.profile_id) {
+          setCurrentUserId(parseInt(user.profile_id, 10));
+        }
+      } catch (err) {
+        console.error('Failed to fetch user:', err);
+      }
+    };
+    fetchUserId();
+  }, []);
+
+  // Fetch all shopping lists when group changes
+  useEffect(() => {
+    if (!currentGroup) {
+      setLoading(false);
+      return;
+    }
+    
     const fetchLists = async () => {
       try {
         setLoading(true);
-        const lists = await getShoppingLists(groupId);
+        const lists = await getShoppingLists(currentGroup.group_id);
         setAllLists(lists);
         if (lists.length > 0) {
           setCurrentList(lists[0]);
+        } else {
+          setCurrentList(null);
+          setItems([]);
         }
         setError(null);
       } catch (err) {
@@ -92,11 +130,14 @@ function ShoppingListPage() {
       }
     };
     fetchLists();
-  }, [groupId]);
+  }, [currentGroup]);
 
   // Fetch items when current list changes
   useEffect(() => {
-    if (!currentList) return;
+    if (!currentList) {
+      setItems([]);
+      return;
+    }
     
     const fetchItems = async () => {
       try {
@@ -114,7 +155,7 @@ function ShoppingListPage() {
   }, [currentList]);
 
   const addItem = async () => {
-    if (!newItemName.trim() || !currentList) return;
+    if (!newItemName.trim() || !currentList || !currentUserId) return;
     
     try {
       const newItem = await addItemToList(currentList.list_id, {
@@ -132,10 +173,10 @@ function ShoppingListPage() {
   };
 
   const handleCreateList = async () => {
-    if (!newListName.trim()) return;
+    if (!newListName.trim() || !currentGroup) return;
     
     try {
-      const newList = await createShoppingList(groupId, newListName);
+      const newList = await createShoppingList(currentGroup.group_id, newListName);
       setAllLists((prev) => [...prev, newList]);
       setCurrentList(newList);
       setNewListName("");
@@ -161,6 +202,44 @@ function ShoppingListPage() {
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete list");
     }
+  };
+
+  const handleExportList = () => {
+    if (!currentList || items.length === 0) return;
+    
+    // Create text content
+    const header = `${currentList.list_name}\nCreated: ${new Date(currentList.date_created).toLocaleDateString()}\n\n`;
+    const uncheckedItems = items.filter(item => !item.bought);
+    const checkedItems = items.filter(item => item.bought);
+    
+    let content = header;
+    
+    if (uncheckedItems.length > 0) {
+      content += "Items to Buy:\n";
+      uncheckedItems.forEach(item => {
+        content += `☐ ${item.item_name}${item.item_quantity > 1 ? ` (x${item.item_quantity})` : ''}\n`;
+      });
+    }
+    
+    if (checkedItems.length > 0) {
+      content += "\nPurchased Items:\n";
+      checkedItems.forEach(item => {
+        content += `☑ ${item.item_name}${item.item_quantity > 1 ? ` (x${item.item_quantity})` : ''}\n`;
+      });
+    }
+    
+    content += `\nTotal Items: ${items.length}\nRemaining: ${uncheckedItems.length}\n`;
+    
+    // Create and download file
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentList.list_name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const switchList = (list: ShoppingList) => {
@@ -192,204 +271,251 @@ function ShoppingListPage() {
     }
   };
 
+  if (groupLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: PAGE_BG }}>
+        <div className="text-lg font-medium" style={{ color: BROWN }}>Loading groups...</div>
+      </div>
+    );
+  }
+
+  if (!currentGroup) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: PAGE_BG }}>
+        <main className="mx-auto max-w-6xl px-6 py-12">
+          <div className="text-center py-16 bg-white rounded-3xl shadow-lg border" style={{ borderColor: BROWN }}>
+            <h1 className="text-4xl font-bold mb-4" style={{ color: BROWN }}>No Group Selected</h1>
+            <p className="text-xl mb-8" style={{ color: BROWN }}>
+              You need to create or join a group to access shopping lists
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen text-black" style={{ backgroundColor: "#E8F3E9" }}>
-      {/* Content */}
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <div className="mb-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-5xl text-[#4C331D] font-extrabold" >Lists</h1>
+    <div className="min-h-screen" style={{ backgroundColor: PAGE_BG }}>
+      <main className="mx-auto max-w-6xl px-6 py-12">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-4xl font-bold" style={{ color: GREEN }}>Shopping Lists</h1>
             <button
               onClick={() => setShowNewListForm(!showNewListForm)}
-              className="flex items-center gap-2 rounded-full border border-[#2b4a2e] px-4 py-2 text-[#2b4a2e] hover:bg-[#FFFFFF]"
+              className="flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold hover:opacity-90 transition-all shadow-md"
+              style={{ backgroundColor: GREEN, color: "white" }}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-5 w-5" />
               New List
             </button>
           </div>
 
-          {/* List Selector */}
-          <div className="flex items-center gap-3">
-            <List className="h-5 w-5 text-[#2b4a2e]" />
-            <select
-              value={currentList?.list_id || ""}
-              onChange={(e) => {
-                const list = allLists.find(l => l.list_id === parseInt(e.target.value));
-                if (list) switchList(list);
-              }}
-              className="flex-1 max-w-md px-4 py-2 border border-[#a8c09e] rounded-md bg-white text-[#2b4a2e] focus:outline-none focus:ring-2 focus:ring-[#2b4a2e]"
-            >
-              {allLists.length === 0 && <option value="">No lists available</option>}
-              {allLists.map((list) => (
-                <option key={list.list_id} value={list.list_id}>
-                  {list.list_name} ({new Date(list.date_created).toLocaleDateString()})
-                </option>
-              ))}
-            </select>
-            {currentList && (
-              <>
-                <p className="text-lg text-[#2b4a2e]/80">
-                  {remaining.total - remaining.done} out of {remaining.total || 0} items remaining
-                </p>
-                <button
-                  onClick={handleDeleteList}
-                  className="text-red-500 hover:text-red-700 p-2"
-                  aria-label="Delete list"
-                  title="Delete this list"
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
-              </>
-            )}
-          </div>
+          {/* List Selector and Actions */}
+          {allLists.length > 0 && (
+            <div className="bg-white rounded-3xl shadow-lg p-6 border" style={{ borderColor: BROWN }}>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex-1 min-w-[300px]">
+                  <label className="block text-sm font-semibold mb-2" style={{ color: BROWN }}>Current List</label>
+                  <select
+                    value={currentList?.list_id || ""}
+                    onChange={(e) => {
+                      const list = allLists.find(l => l.list_id === parseInt(e.target.value));
+                      if (list) switchList(list);
+                    }}
+                    className="w-full px-4 py-2.5 border-2 rounded-xl font-medium focus:outline-none focus:ring-2"
+                    style={{ borderColor: BROWN, color: BROWN, backgroundColor: "white" }}
+                  >
+                    {allLists.map((list) => (
+                      <option key={list.list_id} value={list.list_id}>
+                        {list.list_name} - {new Date(list.date_created).toLocaleDateString()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {currentList && (
+                  <>
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-xl" style={{ backgroundColor: BEIGE, border: `2px solid ${BROWN}` }}>
+                      <span className="font-semibold" style={{ color: BROWN }}>
+                        {remaining.total - remaining.done} / {remaining.total} remaining
+                      </span>
+                    </div>
+                    
+                    <button
+                      onClick={handleExportList}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium hover:opacity-80 transition-all border-2"
+                      style={{ borderColor: BROWN, color: BROWN, backgroundColor: "white" }}
+                      title="Export list"
+                    >
+                      <Download className="h-5 w-5" />
+                      Export
+                    </button>
+                    
+                    <button
+                      onClick={handleDeleteList}
+                      className="p-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                      aria-label="Delete list"
+                      title="Delete this list"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* New List Form */}
           {showNewListForm && (
-            <div className="rounded-md border border-[#a8c09e] bg-white p-4 space-y-3">
-              <input
-                type="text"
-                value={newListName}
-                onChange={(e) => setNewListName(e.target.value)}
-                placeholder="List name (e.g., Weekly Groceries)"
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md"
-                onKeyPress={(e) => e.key === "Enter" && handleCreateList()}
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={handleCreateList}
-                  className="px-4 py-2 bg-[#2b4a2e] text-white rounded-md hover:bg-[#1f3721]"
-                >
-                  Create List
-                </button>
-                <button
-                  onClick={() => setShowNewListForm(false)}
-                  className="px-4 py-2 border border-neutral-300 rounded-md hover:bg-neutral-100"
-                >
-                  Cancel
-                </button>
+            <div className="mt-6 bg-white rounded-3xl shadow-lg p-6 border" style={{ borderColor: BROWN }}>
+              <h3 className="text-xl font-bold mb-4" style={{ color: BROWN }}>Create New List</h3>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={newListName}
+                  onChange={(e) => setNewListName(e.target.value)}
+                  placeholder="List name (e.g., Weekly Groceries)"
+                  className="w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 bg-white"
+                  style={{ borderColor: BROWN, color: BROWN }}
+                  onKeyPress={(e) => e.key === "Enter" && handleCreateList()}
+                  autoFocus
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCreateList}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold hover:opacity-90 transition-all shadow-md"
+                    style={{ backgroundColor: GREEN, color: "white" }}
+                  >
+                    <Check className="h-5 w-5" />
+                    Create List
+                  </button>
+                  <button
+                    onClick={() => setShowNewListForm(false)}
+                    className="flex items-center gap-2 px-5 py-2.5 border-2 rounded-xl font-semibold hover:opacity-80 transition-all"
+                    style={{ borderColor: BROWN, color: BROWN, backgroundColor: "white" }}
+                  >
+                    <X className="h-5 w-5" />
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           )}
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md bg-red-100 border border-red-400 text-red-700 px-4 py-3">
+          <div className="mb-6 rounded-xl bg-red-50 border-2 border-red-300 text-red-700 px-6 py-4 font-medium">
             {error}
           </div>
         )}
 
         {!currentList && allLists.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-xl text-neutral-600 mb-4">No shopping lists yet</p>
-            <p className="text-neutral-500">Click "New List" to create your first shopping list!</p>
+          <div className="text-center py-20 bg-white rounded-3xl shadow-lg border" style={{ borderColor: BROWN }}>
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-6" style={{ backgroundColor: BEIGE }}>
+              <Plus className="h-10 w-10" style={{ color: BROWN }} />
+            </div>
+            <h2 className="text-2xl font-bold mb-3" style={{ color: BROWN }}>No shopping lists yet</h2>
+            <p className="text-lg mb-6" style={{ color: BROWN }}>Click "New List" to create your first shopping list!</p>
           </div>
         ) : currentList ? (
-          <>
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_300px]">
-            {/* Left: Shopping list items */}
-            <section className="space-y-6">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 rounded-md border border-[#4C331D]/60 bg-[#DCCEBD] px-3 py-2">
-                  <span className="grow text-center font-medium text-[#4C331D]">
-                    {currentList.list_name}
-                  </span>
-                  <button
-                    aria-label="add item"
-                    onClick={() => setShowAddForm(!showAddForm)}
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[#4C331D] text-[#4C331D] hover:bg-[#FFFFFF]"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
+          <div className="bg-white rounded-3xl shadow-lg p-8 border" style={{ borderColor: BROWN }}>
+            {/* List Header */}
+            <div className="flex items-center justify-between mb-6 pb-6 border-b-2" style={{ borderColor: BEIGE }}>
+              <h2 className="text-3xl font-bold" style={{ color: BROWN }}>{currentList.list_name}</h2>
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold hover:opacity-90 transition-all shadow-md"
+                style={{ backgroundColor: GREEN, color: "white" }}
+              >
+                <Plus className="h-5 w-5" />
+                Add Item
+              </button>
+            </div>
 
-              {/* Add Item Form */}
-              {showAddForm && (
-                <div className="rounded-md border border-[#a8c09e] bg-white p-4 space-y-3">
+            {/* Add Item Form */}
+            {showAddForm && (
+              <div className="mb-6 p-6 rounded-xl border-2" style={{ backgroundColor: BEIGE, borderColor: BROWN }}>
+                <h3 className="text-lg font-bold mb-4" style={{ color: BROWN }}>Add New Item</h3>
+                <div className="space-y-4">
                   <input
                     type="text"
                     value={newItemName}
                     onChange={(e) => setNewItemName(e.target.value)}
                     placeholder="Item name"
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-md"
+                    className="w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 bg-white"
+                    style={{ borderColor: BROWN, color: BROWN }}
                     onKeyPress={(e) => e.key === "Enter" && addItem()}
+                    autoFocus
                   />
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="number"
-                      value={newItemQuantity}
-                      onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)}
-                      min="1"
-                      className="w-20 px-3 py-2 border border-neutral-300 rounded-md"
-                    />
+                  <div className="flex gap-3 items-center flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <label className="font-medium" style={{ color: BROWN }}>Quantity:</label>
+                      <input
+                        type="number"
+                        value={newItemQuantity}
+                        onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)}
+                        min="1"
+                        className="w-20 px-3 py-2 border-2 rounded-xl focus:outline-none bg-white"
+                        style={{ borderColor: BROWN, color: BROWN }}
+                      />
+                    </div>
                     <button
                       onClick={addItem}
-                      className="px-4 py-2 bg-[#2b4a2e] text-white rounded-md hover:bg-[#1f3721]"
+                      disabled={!newItemName.trim()}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold hover:opacity-90 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: GREEN, color: "white" }}
                     >
-                      Add Item
+                      <Check className="h-5 w-5" />
+                      Add
                     </button>
                     <button
-                      onClick={() => setShowAddForm(false)}
-                      className="px-4 py-2 border border-neutral-300 rounded-md hover:bg-neutral-100"
+                      onClick={() => {
+                        setShowAddForm(false);
+                        setNewItemName("");
+                        setNewItemQuantity(1);
+                      }}
+                      className="px-5 py-2.5 border-2 rounded-xl font-semibold hover:opacity-80 transition-all"
+                      style={{ borderColor: BROWN, color: BROWN, backgroundColor: "white" }}
                     >
                       Cancel
                     </button>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {loading ? (
-                <div className="space-y-3">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-6 rounded-full bg-neutral-200/70" />
-                  ))}
-                </div>
-              ) : items.length === 0 ? (
-                <div className="text-center py-8 text-neutral-500">
-                  No items yet. Click + to add your first item!
-                </div>
-              ) : (
-                <ul className="space-y-2">
-                  {items.map((item) => (
-                    <ItemRow
-                      key={item.item_id}
-                      item={item}
-                      onToggle={toggleItem}
-                      onDelete={handleDeleteItem}
-                    />
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-
-          {/* Right: Favorites card */}
-          <aside className="space-y-3">
-            <div className="text-center text-[15px] font-medium text-[#2b4a2e]">Add from favorites</div>
-            <div className="flex justify-center">
-              <Star className="h-7 w-7" fill="#2b4a2e" color="#2b4a2e" />
-            </div>
-            <div className="rounded-lg border border-neutral-300 bg-white p-4 min-h-[32rem] shadow-sm" />
-          </aside>
-        </div>
-
-        {/* Footer action */}
-        <div className="mt-10 flex flex-col items-center gap-2">
-          <button
-            className="flex items-center gap-2 rounded-full border border-[#2b4a2e] px-4 py-2 text-[#2b4a2e] hover:bg-[#eef6ea]"
-            onClick={() => alert("Share/Export coming soon")}
-          >
-            <span>Share or export grocery list</span>
-          </button>
-          <Upload className="h-8 w-8" />
-        </div>
-        </>
+            {/* Items List */}
+            {loading ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-14 rounded-xl animate-pulse" style={{ backgroundColor: BEIGE }} />
+                ))}
+              </div>
+            ) : items.length === 0 ? (
+              <div className="text-center py-16 rounded-xl border-2" style={{ backgroundColor: BEIGE, borderColor: BROWN }}>
+                <p className="text-lg font-medium mb-2" style={{ color: BROWN }}>No items yet</p>
+                <p style={{ color: BROWN }}>Click "Add Item" to add your first item!</p>
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {items.map((item) => (
+                  <ItemRow
+                    key={item.item_id}
+                    item={item}
+                    onToggle={toggleItem}
+                    onDelete={handleDeleteItem}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
         ) : null}
       </main>
     </div>
   );
 }
 
-// Wrap with ProtectedRoute before exporting
 export default function ProtectedShoppingListPage() {
   return (
     <ProtectedRoute>

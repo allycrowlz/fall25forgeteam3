@@ -1,4 +1,5 @@
 import psycopg2
+from psycopg2.extras import RealDictCursor 
 
 def get_connection():
     """
@@ -10,5 +11,6 @@ def get_connection():
         user="homebase_dev",
         password="homebase_devforge25",
         host="5.161.238.246",
-        port="5432"
+        port="5432",
+        cursor_factory=RealDictCursor
     )

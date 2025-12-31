@@ -13,11 +13,31 @@ from backend.db.pydanticmodels import (
 router = APIRouter()
 
 
-# Invite code generation utility
-def generate_invite_code(length=8):
-    """Generate a unique invite code"""
+# Invite code generation utility - NOW WITH UNIQUENESS CHECK
+def generate_unique_invite_code(length=8):
+    """Generate a truly unique invite code"""
     characters = string.ascii_uppercase + string.digits
-    return ''.join(random.choices(characters, k=length))
+    
+    conn = get_connection()
+    cur = conn.cursor()
+    
+    try:
+        max_attempts = 100
+        for _ in range(max_attempts):
+            code = ''.join(random.choices(characters, k=length))
+            
+            # Check if code already exists
+            cur.execute("""
+                SELECT join_code FROM "Group" WHERE join_code = %s
+            """, (code,))
+            
+            if cur.fetchone() is None:
+                return code
+        
+        raise HTTPException(status_code=500, detail="Failed to generate unique code")
+    finally:
+        cur.close()
+        conn.close()
 
 
 # POST /groups - Create a new group
@@ -27,7 +47,7 @@ async def create_group(group: GroupCreate):
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
-        join_code = generate_invite_code()
+        join_code = generate_unique_invite_code()
     
         cur.execute("""
             INSERT INTO "Group" (group_name, date_created, group_photo, join_code)
@@ -37,20 +57,22 @@ async def create_group(group: GroupCreate):
         
         row = cur.fetchone()
 
-        # ✅ CHANGE 'creator' to whatever role is allowed (probably 'admin' or 'owner')
         cur.execute("""
             INSERT INTO groupprofile (group_id, profile_id, role)
-            VALUES (%s, %s, 'admin')
+            VALUES (%s, %s, 'creator')
         """, (row['group_id'], group.profile_id))
         
         conn.commit()
         
+        # Return with is_creator field
         return {
             "group_id": row['group_id'],
             "group_name": row['group_name'],
             "date_created": row['date_created'],
             "group_photo": row['group_photo'],
-            "join_code": row['join_code']
+            "join_code": row['join_code'],
+            "role": "creator",
+            "is_creator": True
         }
     except Exception as e:
         conn.rollback()
@@ -59,8 +81,9 @@ async def create_group(group: GroupCreate):
         cur.close()
         conn.close()
 
+
 # POST /groups/join - Join a group using join code
-@router.post("/groups/join")  # ✅ FIXED
+@router.post("/groups/join")
 async def join_group(join_data: JoinGroup):
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -107,8 +130,9 @@ async def join_group(join_data: JoinGroup):
         cur.close()
         conn.close()
 
+
 # GET /groups - Get all groups for current user
-@router.get('/groups')  # ✅ FIXED
+@router.get('/groups')
 async def get_groups(profile_id: int):
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -130,8 +154,9 @@ async def get_groups(profile_id: int):
         cur.close()
         conn.close()
 
+
 # GET /groups/:id - Get a specific group
-@router.get("/groups/{id}")  # ✅ FIXED
+@router.get("/groups/{id}")
 async def get_group(id: int, profile_id: int):
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -156,8 +181,9 @@ async def get_group(id: int, profile_id: int):
         cur.close()
         conn.close()
 
+
 # GET /groups/:id/members - Get all members of a group
-@router.get("/groups/{id}/members")  # ✅ FIXED
+@router.get("/groups/{id}/members")
 async def get_group_members(id: int):
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -171,7 +197,7 @@ async def get_group_members(id: int):
         membership = cur.fetchone()
  
         cur.execute("""
-            SELECT p.profile_id, p.profile_name, p.email, p.picture,
+            SELECT p.profile_id, p.profile_name, p.email, p.picture, p.birthday,
                    gp.role,
                    (gp.role = 'creator') as is_creator
             FROM groupprofile gp
@@ -186,8 +212,9 @@ async def get_group_members(id: int):
         cur.close()
         conn.close()
 
+
 # PUT /groups/:id - Update a group
-@router.put("/groups/{id}")  # ✅ FIXED
+@router.put("/groups/{id}")
 async def update_group(id: int, group: GroupUpdate, profile_id: int):
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -226,8 +253,103 @@ async def update_group(id: int, group: GroupUpdate, profile_id: int):
         cur.close()
         conn.close()
 
+
+# DELETE /groups/:id - Delete a group (creator only)
+@router.delete("/groups/{id}")
+async def delete_group(id: int, profile_id: int):
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        # Check if user is creator
+        cur.execute("""
+            SELECT role FROM groupprofile
+            WHERE group_id = %s AND profile_id = %s
+        """, (id, profile_id))
+        
+        user_role = cur.fetchone()
+        
+        if not user_role or user_role['role'] != 'creator':
+            raise HTTPException(status_code=403, detail="Only group creator can delete the group")
+        
+        # Delete all group members first (due to foreign key constraints)
+        cur.execute("""
+            DELETE FROM groupprofile
+            WHERE group_id = %s
+        """, (id,))
+        
+        # Delete the group
+        cur.execute("""
+            DELETE FROM "Group"
+            WHERE group_id = %s
+            RETURNING group_id
+        """, (id,))
+        
+        deleted = cur.fetchone()
+        
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Group not found")
+        
+        conn.commit()
+        return {"message": "Group deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
+# POST /groups/:id/regenerate-code - Regenerate join code
+@router.post("/groups/{id}/regenerate-code")
+async def regenerate_join_code(id: int, profile_id: int):
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        # Check if user is creator
+        cur.execute("""
+            SELECT role FROM groupprofile
+            WHERE group_id = %s AND profile_id = %s
+        """, (id, profile_id))
+        
+        user_role = cur.fetchone()
+        
+        if not user_role or user_role['role'] != 'creator':
+            raise HTTPException(status_code=403, detail="Only group creator can regenerate join code")
+        
+        # Generate new unique code
+        new_code = generate_unique_invite_code()
+        
+        # Update the group
+        cur.execute("""
+            UPDATE "Group"
+            SET join_code = %s
+            WHERE group_id = %s
+            RETURNING join_code
+        """, (new_code, id))
+        
+        row = cur.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail="Group not found")
+        
+        conn.commit()
+        return {"join_code": row['join_code']}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+
 # DELETE /groups/:id/members/:user_id - Remove a member from group
-@router.delete("/groups/{id}/members/{user_id}")  # ✅ FIXED
+@router.delete("/groups/{id}/members/{user_id}")
 async def remove_member(id: int, user_id: int, profile_id: int):
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -272,8 +394,9 @@ async def remove_member(id: int, user_id: int, profile_id: int):
         cur.close()
         conn.close()
 
+
 # POST /groups/:id/leave - Leave a group
-@router.post("/groups/{id}/leave")  # ✅ FIXED
+@router.post("/groups/{id}/leave")
 async def leave_group(id: int, profile_id: int):
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -306,6 +429,55 @@ async def leave_group(id: int, profile_id: int):
         raise
     except Exception as e:
         conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+@router.get("/groups/{group_id}/events")
+async def get_group_events(
+    group_id: int,
+    start: str,
+    end: str,
+    profile_id: int
+):
+    """Get all events for members of a specific group"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        # First verify that the requesting user is a member of this group
+        cur.execute("""
+            SELECT profile_id FROM groupprofile
+            WHERE group_id = %s AND profile_id = %s
+        """, (group_id, profile_id))
+        
+        membership = cur.fetchone()
+        if not membership:
+            raise HTTPException(status_code=403, detail="Not a member of this group")
+        
+        # Get all events for group members within the date range
+        cur.execute("""
+            SELECT DISTINCT e.event_id,
+                   e.event_name,
+                   e.event_datetime_start,
+                   e.event_datetime_end,
+                   e.event_location,
+                   e.event_notes,
+                   pe.profile_id,
+                   e.group_id
+            FROM Event e
+            JOIN ProfileEvent pe ON e.event_id = pe.event_id
+            WHERE e.group_id = %s
+              AND e.event_datetime_start BETWEEN %s AND %s
+            ORDER BY e.event_datetime_start
+        """, (group_id, start, end))
+        
+        events = cur.fetchall()
+        return events
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cur.close()

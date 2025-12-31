@@ -1,171 +1,321 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import ProtectedRoute from '../components/ProtectedRoute'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { Plus, Users, TrendingUp, DollarSign, Check, Trash2, Filter } from 'lucide-react'
+import { getCurrentUser } from '../services/authService'
+import { 
+  getUserBalance, 
+  getUserBalancesByPerson, 
+  getUserSplits, 
+  getExpenseStats,
+  settleSplit,
+  deleteExpense,
+  type UserBalance,
+  type PersonBalance,
+  type ExpenseSplitDetail,
+  type ExpenseStats
+} from '../services/expenseService'
+import { useGroup } from '../contexts/GroupContext'
 
-function ExpensesContent() {
-  const [activeTab, setActiveTab] = useState('All')
+const PAGE_BG = "#E8F3E9"
+const BROWN = "#4C331D"
+const GREEN = "#407947"
+const BEIGE = "#DCCEBD"
+
+type TabType = 'all' | 'owe-me' | 'i-owe'
+
+export default function ExpensesDashboard() {
   const router = useRouter()
+  const { currentGroup } = useGroup()
+  const [loading, setLoading] = useState(true)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  const [activeTab, setActiveTab] = useState<TabType>('owe-me')
+  
+  // Data state
+  const [balance, setBalance] = useState<UserBalance | null>(null)
+  const [personBalances, setPersonBalances] = useState<PersonBalance[]>([])
+  const [splits, setSplits] = useState<ExpenseSplitDetail[]>([])
+  const [stats, setStats] = useState<ExpenseStats | null>(null)
 
-  const friends = [
-    { name: 'Friend 1', amount: 45.50 },
-    { name: 'Friend 2', amount: -23.00 },
-    { name: 'Friend 3', amount: 67.25 }
-  ]
+  useEffect(() => {
+    loadData()
+  }, [currentGroup])
+
+  async function loadData() {
+    try {
+      setLoading(true)
+      const user = await getCurrentUser()
+      if (!user.profile_id) {
+        console.error('No profile_id found')
+        return
+      }
+      const userId = parseInt(user.profile_id, 10)
+      setCurrentUserId(userId)
+
+      const groupId = currentGroup?.group_id
+
+      // Load all data in parallel
+      const [balanceData, balancesData, splitsData, statsData] = await Promise.all([
+        getUserBalance(userId, groupId),
+        getUserBalancesByPerson(userId, groupId),
+        getUserSplits(userId, groupId, false), // Only unsettled
+        getExpenseStats(userId, groupId)
+      ])
+
+      setBalance(balanceData)
+      setPersonBalances(balancesData)
+      setSplits(splitsData)
+      setStats(statsData)
+    } catch (error) {
+      console.error('Failed to load expense data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleSettle(splitId: number) {
+    if (!confirm('Mark this expense as settled?')) return
+    try {
+      await settleSplit(splitId)
+      await loadData()
+    } catch (error) {
+      alert('Failed to settle expense')
+      console.error(error)
+    }
+  }
+
+  async function handleDelete(itemId: number) {
+    if (!confirm('Delete this expense? This will remove it for all users.')) return
+    try {
+      await deleteExpense(itemId)
+      await loadData()
+    } catch (error) {
+      alert('Failed to delete expense')
+      console.error(error)
+    }
+  }
+
+  // Filter splits based on active tab
+  const filteredSplits = splits.filter(split => {
+    if (activeTab === 'owe-me') {
+      return split.paid_by_id === currentUserId && split.profile_id !== currentUserId
+    }
+    return split.paid_by_id !== currentUserId && split.profile_id === currentUserId
+  })
+
+  // Format chart data
+  const chartData = stats?.weekly_expenses.map((week, idx) => ({
+    name: `Week ${idx + 1}`,
+    amount: Math.round(week.total)
+  })) || []
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: PAGE_BG }}>
+        <div className="text-lg font-medium" style={{ color: BROWN }}>Loading expenses...</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Navigation Bar */}
-      <nav className="bg-white shadow-md mb-8">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex justify-between items-center py-4">
-            <div className="text-2xl font-bold text-gray-800">💰 ExpenseTracker</div>
-            <div className="flex gap-2">
-              <button
-                className="px-6 py-2 rounded-lg font-medium transition bg-blue-600 text-white"
-              >
-                Dashboard
-              </button>
-              <button
-                onClick={() => router.push('/expenses/bill-splitting')}
-                className="px-6 py-2 rounded-lg font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200"
-              >
-                Bill Splitting
-              </button>
-              <button
-                onClick={() => router.push('/expenses/add-expense')}
-                className="px-6 py-2 rounded-lg font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200"
-              >
-                Add Expense
-              </button>
+    <div className="min-h-screen" style={{ backgroundColor: PAGE_BG }}>
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold mb-2" style={{ color: GREEN }}>Expenses</h1>
+            <p style={{ color: BROWN }}>Track and split your expenses</p>
+          </div>
+          <button
+            onClick={() => router.push('/expenses/add-expense')}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold hover:opacity-90 transition-all shadow-md"
+            style={{ backgroundColor: GREEN, color: "white" }}
+          >
+            <Plus className="h-5 w-5" />
+            Add Expense
+          </button>
+        </div>
+
+        {/* Balance Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border" style={{ borderColor: BROWN }}>
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="h-5 w-5" style={{ color: GREEN }} />
+              <h3 className="font-semibold" style={{ color: BROWN }}>Net Balance</h3>
+            </div>
+            <div 
+              className="text-3xl font-bold"
+              style={{ color: (balance?.net_balance || 0) >= 0 ? GREEN : '#c96b6b' }}
+            >
+              {(balance?.net_balance || 0) >= 0 ? '+' : '-'}
+              ${Math.abs(balance?.net_balance || 0).toFixed(2)}
+            </div>
+            <p className="text-sm mt-1" style={{ color: BROWN, opacity: 0.7 }}>
+              {(balance?.net_balance || 0) >= 0 ? 'You are owed' : 'You owe'}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-lg p-6 border" style={{ borderColor: BROWN }}>
+            <h3 className="font-semibold mb-2" style={{ color: BROWN }}>Owed to You</h3>
+            <div className="text-3xl font-bold" style={{ color: GREEN }}>
+              ${(balance?.total_owed_to_me || 0).toFixed(2)}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-lg p-6 border" style={{ borderColor: BROWN }}>
+            <h3 className="font-semibold mb-2" style={{ color: BROWN }}>You Owe</h3>
+            <div className="text-3xl font-bold" style={{ color: '#c96b6b' }}>
+              ${(balance?.total_i_owe || 0).toFixed(2)}
             </div>
           </div>
         </div>
-      </nav>
 
-      <div className="px-6 pb-12">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-            <button 
-              onClick={() => router.push('/expenses/add-expense')}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-            >
-              <span className="text-xl">+</span>
-              New Expense
-            </button>
-          </div>
-         
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-800">Total Balance</h2>
-              <select className="border border-gray-300 rounded px-3 py-1 text-sm">
-                <option>This Month</option>
-                <option>Last Month</option>
-                <option>This Year</option>
-              </select>
-            </div>
-            
-            <div className="text-4xl font-bold text-gray-900 mb-2">$89.75</div>
-            <div className="flex items-center gap-2 text-green-600">
-              <span className="text-lg">↗</span>
-              <span className="text-sm">+12.5% from last month</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Friends & Balances</h2>
-              <div className="flex gap-2 mb-4">
-                {['All', 'Owes Me', 'I Owe'].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`flex-1 py-2 rounded text-sm font-medium transition ${
-                      activeTab === tab
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Splits */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 border" style={{ borderColor: BROWN }}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Users className="h-6 w-6" style={{ color: GREEN }} />
+                <h2 className="text-2xl font-bold" style={{ color: BROWN }}>Recent Expenses</h2>
               </div>
-              {friends.map((friend, idx) => (
-                <div key={idx} className="flex justify-between items-center py-3 border-b last:border-b-0">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-semibold">
-                      {friend.name.charAt(0)}
-                    </div>
-                    <span className="text-gray-800 font-medium">{friend.name}</span>
-                  </div>
-                  <span className={`font-semibold ${friend.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {friend.amount >= 0 ? '+' : '-'}${Math.abs(friend.amount).toFixed(2)}
-                  </span>
-                </div>
+            </div>
+
+            <div className="flex gap-2 mb-6">
+              {[
+                { key: 'owe-me' as TabType, label: 'Owe Me' },
+                { key: 'i-owe' as TabType, label: 'I Owe' }
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                  style={{
+                    backgroundColor: activeTab === tab.key ? GREEN : BEIGE,
+                    color: activeTab === tab.key ? 'white' : BROWN,
+                  }}
+                >
+                  {tab.label}
+                </button>
               ))}
             </div>
 
-            <div className="space-y-4">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Quick Actions</h2>
-                <div className="space-y-2">
-                  <button className="w-full bg-red-50 text-red-700 py-3 rounded-lg hover:bg-red-100 transition flex items-center justify-center gap-2 font-medium">
-                    <span className="text-xl">↓</span>
-                    Settle Up
-                  </button>
-                  <button className="w-full bg-green-50 text-green-700 py-3 rounded-lg hover:bg-green-100 transition flex items-center justify-center gap-2 font-medium">
-                    <span className="text-xl">$</span>
-                    Record Payment
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">Monthly Expenses</h2>
-                  <select className="text-sm border border-gray-300 rounded px-2 py-1">
-                    <option>October</option>
-                    <option>September</option>
-                    <option>August</option>
-                  </select>
-                </div>
-                <div className="flex justify-around items-end h-40 gap-2">
-                  {[
-                    { height: 60, label: 'Week 1' },
-                    { height: 80, label: 'Week 2' },
-                    { height: 70, label: 'Week 3' },
-                    { height: 90, label: 'Week 4' }
-                  ].map((week, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col justify-end items-center">
-                      <div className="text-xs text-gray-600 mb-1">${(week.height * 1.5).toFixed(0)}</div>
-                      <div
-                        className="w-full bg-blue-600 rounded-t hover:bg-blue-700 transition cursor-pointer"
-                        style={{height: `${week.height}%`}}
-                      ></div>
-                      <div className="text-xs text-gray-600 mt-2">{week.label}</div>
+            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              {filteredSplits.length > 0 ? (
+                filteredSplits.map(split => {
+                  const iOwe = split.paid_by_id !== currentUserId && split.profile_id === currentUserId
+                  return (
+                    <div key={split.split_id} className="p-4 rounded-xl border-2" style={{ borderColor: BROWN, backgroundColor: BEIGE }}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-base" style={{ color: BROWN }}>{split.item_name}</h4>
+                          <p className="text-sm" style={{ color: BROWN }}>
+                            {iOwe 
+                              ? `You owe ${split.paid_by_name}` 
+                              : `${split.profile_name} owes you`}
+                          </p>
+                          <p className="text-xs mt-1" style={{ color: BROWN, opacity: 0.7 }}>
+                            {new Date(split.expense_date || split.date_created).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-lg mb-2" style={{ color: iOwe ? '#c96b6b' : GREEN }}>
+                            ${split.amount_owed.toFixed(2)}
+                          </div>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleSettle(split.split_id)}
+                              className="p-1.5 rounded-lg hover:opacity-80 transition-all"
+                              style={{ backgroundColor: GREEN, color: 'white' }}
+                              title="Settle"
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
+                            {split.paid_by_id === currentUserId && (
+                              <button
+                                onClick={() => handleDelete(split.item_id)}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  ))}
+                  )
+                })
+              ) : (
+                <div className="text-center py-16 rounded-xl" style={{ backgroundColor: BEIGE }}>
+                  <p className="font-medium" style={{ color: BROWN }}>No expenses in this category</p>
                 </div>
-                <div className="flex justify-center gap-2 mt-4">
-                  <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-                  <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
-                  <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
+
+          {/* Weekly Chart */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 border" style={{ borderColor: BROWN }}>
+            <div className="flex items-center gap-2 mb-6">
+              <TrendingUp className="h-6 w-6" style={{ color: GREEN }} />
+              <h2 className="text-2xl font-bold" style={{ color: BROWN }}>Weekly Spending</h2>
+            </div>
+            
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={BROWN} opacity={0.1} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: BROWN }} />
+                  <YAxis tick={{ fontSize: 12, fill: BROWN }} />
+                  <Tooltip 
+                    formatter={(value) => `$${value}`}
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: `2px solid ${BROWN}`,
+                      borderRadius: '12px'
+                    }}
+                  />
+                  <Bar dataKey="amount" fill={GREEN} radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center rounded-xl" style={{ backgroundColor: BEIGE }}>
+                <p className="font-medium" style={{ color: BROWN }}>No expense data yet</p>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Person Balances */}
+        {personBalances.length > 0 && (
+          <div className="mt-6 bg-white rounded-2xl shadow-lg p-6 border" style={{ borderColor: BROWN }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: BROWN }}>Balance by Person</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {personBalances.map(person => (
+                <div key={person.profile_id} className="p-4 rounded-xl" style={{ backgroundColor: BEIGE }}>
+                  <div className="flex items-center gap-3">
+                    {person.profile_picture ? (
+                      <img src={person.profile_picture} alt="" className="w-10 h-10 rounded-full" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: GREEN, color: 'white' }}>
+                        {person.profile_name[0]}
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <p className="font-semibold" style={{ color: BROWN }}>{person.profile_name}</p>
+                      <p className="font-bold" style={{ color: person.amount > 0 ? GREEN : '#c96b6b' }}>
+                        {person.amount > 0 ? 'Owes you ' : 'You owe '}
+                        ${Math.abs(person.amount).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
-}
-
-export default function Dashboard() {
-  return (
-    <ProtectedRoute>
-      <ExpensesContent />
-    </ProtectedRoute>
-  );
 }

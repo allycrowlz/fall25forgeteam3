@@ -1,22 +1,21 @@
 'use client';
-
 import { usePathname } from "next/navigation";
 import Navbar from "./Navbar";
 
+const BROWN = "#4C331D";
+const GREEN = "#407947";
+
 export default function NavbarWrapper() {
   const pathname = usePathname();
-
   const noNavbarPages = ['/', '/login', '/signup'];
   const showNavbar = !noNavbarPages.includes(pathname);
 
   const getNavbarColors = () => {
-    //if (pathname === '/expenses' || pathname === '/shoppinglist') return { bg: '#C5E4AE', text: '#407947' }; // Light green bg, dark green text
-    if (pathname === '/groups') return { bg: '#407947', text: "#FFFFFF" } // Dark green bg, white text
-    // Default color for other pages
-    return { bg: '#FFFFFF', text: '#407947' }; // White bg, dark green text
+    // Groups page: Dark green bg, white text
+    if (pathname === '/groups') return { bg: GREEN, text: "#FFFFFF" };
+    // Default for other pages: White bg, white text
+    return { bg: '#FFFFFF', text: GREEN };
   };
 
-  const showGroupControls = pathname === '/groups';
-
-  return showNavbar ? <Navbar colors={getNavbarColors()} showGroupControls={showGroupControls} /> : null;
+  return showNavbar ? <Navbar colors={getNavbarColors()} /> : null;
 }
