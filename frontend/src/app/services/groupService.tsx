@@ -28,6 +28,7 @@ const getApiBaseUrl = () => {
     picture: string | null;
     role: string;
     is_creator: boolean;
+    birthday?: string | null;
   }
   
   export interface CreateGroupData {
@@ -211,3 +212,67 @@ const getApiBaseUrl = () => {
     return response.json();
   }
 
+  export async function deleteGroup(
+    groupId: number,
+    profileId: number
+  ): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/groups/${groupId}?profile_id=${profileId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to delete group');
+    }
+  
+    return response.json();
+  }
+
+// Add this interface and function to your existing groupService.ts
+
+export interface GroupEvent {
+  event_id: number;
+  event_name: string;
+  event_datetime_start: string;
+  event_datetime_end?: string;
+  event_location?: string;
+  event_notes?: string;
+  profile_id?: number;
+  group_id?: number;        
+}
+
+export async function getGroupEvents(
+    groupId: number,
+    start: string,
+    end: string
+  ): Promise<GroupEvent[]> {
+    if (typeof window === 'undefined') {
+      return [];
+    }
+  
+    const profileId = localStorage.getItem('profile_id');
+    if (!profileId) {
+      console.warn('No profile_id found in localStorage');
+      return [];
+    }
+  
+    const response = await fetch(
+      `http://localhost:8000/api/groups/${groupId}/events?start=${start}&end=${end}&profile_id=${profileId}`
+    );
+  
+
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ detail: 'Failed to fetch group events' }));
+      console.error('Error response:', error);
+      return [];
+    }
+
+    const data = await response.json();
+    console.log('📦 Raw group events from API:', data);
+    return data as GroupEvent[]; 
+}

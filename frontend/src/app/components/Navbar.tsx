@@ -1,28 +1,51 @@
+'use client';
+
+import dynamic from 'next/dynamic';
 import Link from "next/link";
-import Image from "next/image"
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+
+const GroupSwitcher = dynamic(() => import("./GroupSwitcher"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center gap-4">
+      <div className="w-80 h-9 bg-gray-100 rounded-xl animate-pulse" />
+      <div className="w-32 h-9 bg-gray-100 rounded-xl animate-pulse" />
+      <div className="w-32 h-9 bg-gray-100 rounded-xl animate-pulse" />
+    </div>
+  ),
+});
+
+const BROWN = "#4C331D";
 
 interface NavbarProps {
   colors?: {
     bg: string;
     text: string;
   };
-  showGroupControls?: boolean;
 }
 
-export default function Navbar({ colors, showGroupControls = false }: NavbarProps) {
-  const navColors = colors || { bg: '#FFFFFF', text: '#407947' };
-  const linkTextClassname = "font-normal hover:font-semibold hover:scale-110 transition-all";
+export default function Navbar({ colors }: NavbarProps) {
+  const pathname = usePathname();
+  const isGroupsPage = pathname === '/groups';
+  const navColors = colors || { bg: "#FFFFFF", text: "#FFFFFF" };
+  const linkTextClassname =
+    "font-normal hover:font-semibold hover:scale-105 transition-all";
 
   return (
     <header
       className="shadow-md px-8 py-4"
-      style={{ backgroundColor: navColors.bg , borderColor: navColors.text , borderWidth: "1px" , borderStyle: "solid" }}
+      style={{
+        backgroundColor: navColors.bg,
+        borderColor: navColors.text,
+        borderWidth: "1px",
+        borderStyle: "solid",
+      }}
     >
-      <div className="flex items-center justify-between max-w-7xl mx-auto">
-        {/* Logo (and optionally Dropdown + Add Button) */}
-        <div className="flex items-center gap-4">
-          {/* Logo */}
-          {!showGroupControls && (
+      <div className="flex items-center justify-between mx-auto" style={{ maxWidth: '1400px' }}>
+        {/* Left side: Logo OR (on groups page) dropdown + buttons */}
+        <div className="flex items-center gap-4 flex-shrink-0">
+          {!isGroupsPage && (
             <Link href="/groups" className="hover:opacity-80 transition-opacity">
               <Image
                 src="/logo.svg"
@@ -34,34 +57,15 @@ export default function Navbar({ colors, showGroupControls = false }: NavbarProp
             </Link>
           )}
 
-          {/* Dropdown and Add Button (only shows up on groups page) - MAKE THIS ITS OWN COMPONENT LATER ON */}
-          {showGroupControls && (
-            <>
-              <select className="w-80 px-4 py-1 bg-white rounded-xl text-black font-medium focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-all">
-                <option value="">Select a Group</option>
-                <option className="bg-blue-100">Group 1</option>
-                <option className="bg-green-100">Group 2</option>
-                <option className="bg-purple-100">Group 3</option>
-              </select>
-
-              <Link
-                href="/groups/join"
-                className="px-6 py-1 bg-white text-black rounded-xl font-semibold hover:bg-gray-200 transition-all shadow-md hover:shadow-lg transform hover:scale-105 whitespace-nowrap"
-              >
-                + Add Group
-              </Link>
-              <Link
-                href="/groups/create"
-                className="px-6 py-1 bg-white text-black rounded-xl font-semibold hover:bg-gray-200 transition-all shadow-md hover:shadow-lg transform hover:scale-105 whitespace-nowrap"
-              >
-                + Create Group
-              </Link>
-            </>
-          )}
+          <GroupSwitcher
+            variant="navbar"
+            showActions={isGroupsPage}
+            theme={isGroupsPage ? 'light' : 'dark'}
+          />
         </div>
 
         {/* Right side - Navigation Links */}
-        <nav className="flex gap-8 items-center">
+        <nav className="flex items-center" style={{ gap: '2.5rem' }}>
           <Link
             href="/groups"
             className={linkTextClassname}
@@ -105,11 +109,11 @@ export default function Navbar({ colors, showGroupControls = false }: NavbarProp
             Profile
           </Link>
           <Link
-            href="/settings"
+            href="/groups/settings"
             className={linkTextClassname}
             style={{ color: navColors.text }}
           >
-            Settings
+            Group Settings
           </Link>
         </nav>
       </div>

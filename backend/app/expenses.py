@@ -1,86 +1,150 @@
-import logfire
-from fastapi import APIRouter, FastAPI, HTTPException, Depends
-from pydantic import BaseModel
-import datetime
-from backend.app.auth_routes import get_current_user_from_token
+from fastapi import APIRouter, HTTPException, Query
+from typing import Optional
 from backend.db.pydanticmodels import *
-from backend.db.expense_queries import (
-    get_all_expenses_in_list,
-    get_item_in_list,
-    get_group_lists,
-    delete_expense,
-    create_expense
-)
-router = APIRouter()
+from backend.db.expense_queries import *
 
-try:
-    logfire.configure(token="pylf_v1_us_2YgWR7VMR3yLB7JrQPnwQJt3MFQPqW1jWKPg5p2klfMj")  
-    logfire.info('Instantiation')
-except Exception:
-    # Logfire not configured, continue without it
-    pass
+router = APIRouter(prefix="/api/expenses", tags=["expenses"])
 
-@router.get("/")
-async def root():
-    return {"message": "Hello World"}
+# =========================================================
+# EXPENSE LISTS
+# =========================================================
 
-@router.get("/recent")
-async def get_recent_expenses(
-    limit: int = 3,
-    user_id: str = Depends(get_current_user_from_token)
+@router.post("/lists", status_code=201)
+async def create_list(list_data: ExpenseListCreate):
+    """Create a new expense list for a group"""
+    try:
+        return create_expense_list(list_data.group_id, list_data.list_name)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/groups/{group_id}/lists")
+async def get_group_lists(group_id: int):
+    """Get all expense lists for a group"""
+    try:
+        return get_group_expense_lists(group_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =========================================================
+# EXPENSE ITEMS
+# =========================================================
+
+@router.post("/", status_code=201)
+async def create_expense(expense: ExpenseItemCreate):
+    """Create a new expense with splits"""
+    try:
+        expense_data = expense.dict(exclude={'splits'})
+        splits_data = [split.dict() for split in expense.splits]
+        return create_expense_item(expense_data, splits_data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# IMPORTANT: Specific routes MUST come before generic /{item_id} route
+@router.get("/groups/{group_id}/expenses")
+async def get_group_expenses_route(
+    group_id: int,
+    include_deleted: bool = Query(False)
 ):
-    """
-    Gets recent expenses for the current user across all their groups
-    """
-    from backend.db.expense_queries import get_recent_expenses_for_user
-    return get_recent_expenses_for_user(int(user_id), limit)
+    """Get all expenses for a group"""
+    try:
+        return get_group_expenses(group_id, include_deleted)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/expenseslists/expenses", status_code=201)
-async def create_expense_endpoint(expense: ExpenseItemCreate):  # Renamed
-    """
-    Creates a new expense using the inputted data parsed into a PydanticCreateModel
-    """
-    return create_expense(expense)
-
-@router.put("/{id}")
-async def update_or_create_expense(expense: ExpenseItemCreate, id: int):
-    """Not yet implemented."""
-    pass
+# Generic routes with path parameters should come LAST
+@router.get("/{item_id}")
+async def get_expense(item_id: int):
+    """Get expense with all splits"""
+    try:
+        expense = get_expense_with_splits(item_id)
+        if not expense:
+            raise HTTPException(status_code=404, detail="Expense not found")
+        return expense
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{item_id}")
-async def delete_expense_endpoint(item_id: int):  # Renamed
-    """
-    Deletes the expense with the given expense id
-    """
-    delete_expense(item_id)
-    return {"message": f"Expense {item_id} deleted"}
+async def delete_expense_route(item_id: int):
+    """Soft delete an expense"""
+    try:
+        success = delete_expense(item_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Expense not found")
+        return {"message": "Expense deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/expenseslists/{list_id}/expenses")
-async def get_all_expenses_endpoint(list_id: int):  # Renamed
-    """
-    Gets all expenses in a given expense list
-    """
-    return get_all_expenses_in_list(list_id)
+# =========================================================
+# SPLITS & SETTLEMENTS
+# =========================================================
 
-@router.get("/expenseslists/{list_id}/expenses/{item_id}")
-async def get_expense_item(list_id: int, item_id: int):  # Renamed (was duplicate name)
-    """
-    Gets an expense in a given list at a given expense, 
-    note: can probably remove list_id as a parameter but this is due 
-    soon so I'll change it for the next commit.
-    """
-    return get_item_in_list(list_id, item_id)
+@router.put("/splits/{split_id}/settle")
+async def settle_split_route(split_id: int):
+    """Mark a split as settled"""
+    try:
+        result = settle_split(split_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Split not found")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/groups/{group_id}/expenselists")
-async def get_group_expense_lists(group_id: int):  # Renamed
-    """
-    Gets all expense lists for a given group id
-    """
-    return get_group_lists(group_id)
+@router.get("/users/{profile_id}/splits")
+async def get_user_splits_route(
+    profile_id: int,
+    group_id: Optional[int] = Query(None),
+    settled: Optional[bool] = Query(None)
+):
+    """Get all splits for a user, optionally filtered"""
+    try:
+        return get_user_splits(profile_id, group_id, settled)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/groups/{group_id}/expenseslists/{list_id}/expenses/balance")
-async def total_balance(id: int):
-    """Not yet implemented"""
-    pass
+# =========================================================
+# BALANCES
+# =========================================================
 
-# @router.put("/api/expenses/:id/splits/:split_id/paid")
+@router.get("/users/{profile_id}/balance")
+async def get_balance(
+    profile_id: int,
+    group_id: Optional[int] = Query(None)
+):
+    """Get user's total balance"""
+    try:
+        return get_user_balance(profile_id, group_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/users/{profile_id}/balances")
+async def get_balances_by_person(
+    profile_id: int,
+    group_id: Optional[int] = Query(None)
+):
+    """Get user's balance breakdown by person"""
+    try:
+        return get_user_balances_by_person(profile_id, group_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =========================================================
+# STATISTICS
+# =========================================================
+
+@router.get("/users/{profile_id}/stats")
+async def get_stats(
+    profile_id: int,
+    group_id: Optional[int] = Query(None),
+    weeks: int = Query(4, ge=1, le=52)
+):
+    """Get expense statistics for charts"""
+    try:
+        return get_expense_stats(profile_id, group_id, weeks)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

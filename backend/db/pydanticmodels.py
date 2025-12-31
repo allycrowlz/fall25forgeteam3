@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 from decimal import Decimal
 
@@ -12,13 +12,12 @@ class ProfileBase(BaseModel):
     email: EmailStr
     picture: Optional[str] = Field(None, max_length=255)
     birthday: Optional[str] = None
-    phone: Optional[str] = None  # ADD THIS LINE
+    phone: Optional[str] = None
     
-    @field_validator('phone')  # ADD THIS VALIDATOR
+    @field_validator('phone')
     @classmethod
     def validate_phone(cls, v):
         if v is not None and v != '':
-            # Remove any non-digit characters
             digits = ''.join(filter(str.isdigit, v))
             if len(digits) != 10:
                 raise ValueError('Phone number must be exactly 10 digits')
@@ -26,7 +25,7 @@ class ProfileBase(BaseModel):
         return None
 
 class ProfileCreate(ProfileBase):
-    password: str  # Plain password (will be hashed before storing)
+    password: str
 
 class Profile(ProfileBase):
     profile_id: int
@@ -34,9 +33,7 @@ class Profile(ProfileBase):
     password_hash: str
     
     class Config:
-        from_attributes = True  # Allows Pydantic to work with DB rows
-
-# ... (EventBase, EventCreate, Event, ProfileEventBase, etc. stay the same)
+        from_attributes = True
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -59,11 +56,10 @@ class UserUpdate(BaseModel):
     birthday: Optional[str] = None
     phone: Optional[str] = None
     
-    @field_validator('phone')  # ADD THIS VALIDATOR
+    @field_validator('phone')
     @classmethod
     def validate_phone(cls, v):
         if v is not None and v != '':
-            # Remove any non-digit characters
             digits = ''.join(filter(str.isdigit, v))
             if len(digits) != 10:
                 raise ValueError('Phone number must be exactly 10 digits')
@@ -77,12 +73,14 @@ class EventBase(BaseModel):
     event_datetime_end: Optional[datetime] = None
     event_location: Optional[str] = Field(None, max_length=255)
     event_notes: Optional[str] = None
+    group_id: Optional[int] = None
 
 class EventCreate(EventBase):
     pass
 
 class Event(EventBase):
     event_id: int
+    profile_id: int
     
     class Config:
         from_attributes = True
@@ -99,10 +97,6 @@ class ProfileEvent(ProfileEventBase):
     class Config:
         from_attributes = True
 
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
 
 # ============================================
 # GROUP MODELS
@@ -116,7 +110,7 @@ class GroupCreate(BaseModel):
     """For creating a new group"""
     group_name: str = Field(..., max_length=100)
     group_photo: Optional[str] = Field(None, max_length=255)
-    profile_id: int  # Creator's profile ID
+    profile_id: int
 
 class GroupUpdate(BaseModel):
     """For updating group details"""
@@ -186,12 +180,12 @@ class ChoreAssignee(BaseModel):
     """Model for someone assigned to a chore"""
     profile_id: int
     profile_name: str
-    status: str  # 'pending' or 'completed'
+    status: str
 
 
 class ChoreWithAssignees(Chore):
     """Model for a chore with its assignees"""
-    assignees: list[ChoreAssignee] = []
+    assignees: List[ChoreAssignee] = []
 
 
 class ChoreAssign(BaseModel):
@@ -204,61 +198,121 @@ class ChoreStatusUpdate(BaseModel):
     """Model for updating chore status"""
     status: str 
 
-
 # ============================================
-# EXPENSE MODELS
+# EXPENSE LIST MODELS
 # ============================================
 
-class ExpenseListBase(BaseModel):
+class ExpenseListCreate(BaseModel):
     list_name: str = Field(..., max_length=100)
     group_id: int
-    date_closed: Optional[datetime] = None
 
-class ExpenseListCreate(ExpenseListBase):
-    pass
-
-class ExpenseList(ExpenseListBase):
+class ExpenseList(BaseModel):
     list_id: int
+    list_name: str
+    group_id: int
     date_created: datetime
+    date_closed: Optional[datetime] = None
     
     class Config:
         from_attributes = True
 
+# ============================================
+# EXPENSE ITEM MODELS
+# ============================================
 
-class ExpenseItemBase(BaseModel):
+class ExpenseSplitInput(BaseModel):
+    """Input for creating splits - simplified"""
+    profile_id: int
+    amount_owed: Decimal = Field(..., decimal_places=2)
+
+class ExpenseItemCreate(BaseModel):
+    """Create a new expense"""
     item_name: str = Field(..., max_length=100)
     list_id: int
     item_total_cost: Decimal = Field(..., decimal_places=2)
-    item_quantity: int = Field(default=1)
     notes: Optional[str] = None
-    bought_by_id: int
+    paid_by_id: int
+    is_recurring: bool = False
+    recurring_frequency: Optional[str] = Field(None, pattern="^(daily|weekly|monthly|yearly)$")
+    recurring_end_date: Optional[date] = None
+    splits: List[ExpenseSplitInput]
 
-class ExpenseItemCreate(ExpenseItemBase):
-    pass
+class ExpenseItemUpdate(BaseModel):
+    """Update an existing expense"""
+    item_name: Optional[str] = Field(None, max_length=100)
+    notes: Optional[str] = None
 
-class ExpenseItem(ExpenseItemBase):
+class ExpenseItem(BaseModel):
+    """Full expense item"""
     item_id: int
-    date_bought: datetime
+    item_name: str
+    list_id: int
+    item_total_cost: Decimal
+    notes: Optional[str]
+    paid_by_id: int
+    date_created: datetime
+    is_recurring: bool
+    recurring_frequency: Optional[str]
+    recurring_end_date: Optional[date]
+    is_deleted: bool
     
     class Config:
         from_attributes = True
 
+# ============================================
+# EXPENSE SPLIT MODELS
+# ============================================
 
-class ExpenseSplitBase(BaseModel):
+class ExpenseSplit(BaseModel):
+    """A single split record"""
+    split_id: int
     item_id: int
     profile_id: int
-    amount_owed: Decimal = Field(..., decimal_places=2)
-    is_active: bool = Field(default=True)
-
-class ExpenseSplitCreate(ExpenseSplitBase):
-    pass
-
-class ExpenseSplit(ExpenseSplitBase):
-    split_id: int
+    amount_owed: Decimal
+    is_settled: bool
     date_created: datetime
+    date_settled: Optional[datetime]
     
     class Config:
         from_attributes = True
+
+class ExpenseSplitWithDetails(ExpenseSplit):
+    """Split with joined user and expense info"""
+    profile_name: str
+    profile_picture: Optional[str]
+    item_name: str
+    paid_by_id: int
+    paid_by_name: str
+    group_id: int
+
+# ============================================
+# COMBINED/RESPONSE MODELS
+# ============================================
+
+class ExpenseItemWithSplits(ExpenseItem):
+    """Expense with all its splits"""
+    paid_by_name: str
+    splits: List[ExpenseSplitWithDetails] = []
+
+class UserBalance(BaseModel):
+    """Balance summary for a user"""
+    profile_id: int
+    total_owed_to_me: Decimal
+    total_i_owe: Decimal
+    net_balance: Decimal
+
+class GroupBalance(BaseModel):
+    """Balance for a specific person in relation to the user"""
+    profile_id: int
+    profile_name: str
+    profile_picture: Optional[str]
+    amount: Decimal
+
+class ExpenseStats(BaseModel):
+    """Statistics for expenses"""
+    total_spent: Decimal
+    weekly_expenses: List[Dict[str, Any]]
+    monthly_expenses: List[Dict[str, Any]]
 
 
 # ============================================
@@ -270,6 +324,7 @@ class ShoppingList(BaseModel):
     date_created: datetime
     date_closed: Optional[datetime] = None
     group_id: int
+
 class ListItem(BaseModel):
     item_name: str
     item_id: int
@@ -278,19 +333,23 @@ class ListItem(BaseModel):
     added_by: int
     date_added: datetime
     bought: bool
+
 class CreateShoppingList(BaseModel):
     list_name: str
+
 class ShoppingListWithItems(BaseModel):
     list_id: int
     list_name: str
     date_created: datetime
     date_closed: Optional[datetime] = None
     group_id: int
-    items: list[ListItem] = []
+    items: List[ListItem] = []
+
 class AddItem(BaseModel):
     item_name: str
     item_quantity: Optional[int] = 1
     added_by: int
+
 class UpdateItem(BaseModel):
     item_name: Optional[str] = None
     item_quantity: Optional[int] = None

@@ -18,6 +18,12 @@ export function GroupProvider({ children }: { children: ReactNode }) {
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false); // NEW: Track if we're on client
+
+  // NEW: Set isClient to true after mount
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const fetchGroups = async () => {
     setLoading(true);
@@ -26,19 +32,25 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       if (user.profile_id) {
         const userGroups = await getUserGroups(parseInt(user.profile_id, 10));
         setGroups(userGroups);
-        
-        // Auto-select first group if none selected
-        if (userGroups.length > 0 && !selectedGroup) {
-          setSelectedGroup(userGroups[0]);
-          localStorage.setItem('selectedGroupId', userGroups[0].group_id.toString());
+
+        // Only access localStorage on client side
+        if (typeof window !== 'undefined') {
+          // Restore previously selected group from localStorage
+          const savedGroupId = localStorage.getItem('selectedGroupId');
+          if (savedGroupId) {
+            const savedGroup = userGroups.find(g => g.group_id === parseInt(savedGroupId));
+            if (savedGroup) {
+              setSelectedGroup(savedGroup);
+              return; // Exit early if we found saved group
+            }
+          }
         }
-        
-        // Restore previously selected group from localStorage
-        const savedGroupId = localStorage.getItem('selectedGroupId');
-        if (savedGroupId) {
-          const savedGroup = userGroups.find(g => g.group_id === parseInt(savedGroupId));
-          if (savedGroup) {
-            setSelectedGroup(savedGroup);
+
+        // Auto-select first group if none selected
+        if (userGroups.length > 0) {
+          setSelectedGroup(userGroups[0]);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('selectedGroupId', userGroups[0].group_id.toString());
           }
         }
       }
@@ -50,15 +62,19 @@ export function GroupProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    fetchGroups();
-  }, []);
+    if (isClient) { // Only fetch on client side
+      fetchGroups();
+    }
+  }, [isClient]);
 
   const updateSelectedGroup = (group: Group | null) => {
     setSelectedGroup(group);
-    if (group) {
-      localStorage.setItem('selectedGroupId', group.group_id.toString());
-    } else {
-      localStorage.removeItem('selectedGroupId');
+    if (typeof window !== 'undefined') { // Only access localStorage on client
+      if (group) {
+        localStorage.setItem('selectedGroupId', group.group_id.toString());
+      } else {
+        localStorage.removeItem('selectedGroupId');
+      }
     }
   };
 
